@@ -1,6 +1,7 @@
 use std::iter::Zip;
 use std::{env, process};
 use std::{ffi::OsString, time::Duration};
+use nannou::lyon::lyon_tessellation::StrokeOptions;
 use nannou::prelude::*;
 
 use othello_gui::othello::*;
@@ -56,7 +57,16 @@ fn model(app: &App) -> Model {
 fn update(_app: &App, _model: &mut Model, _update: Update) {}
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    const SIZE_MULTIPLIER: (f32, f32) = (16.0, 9.0);
+    const SIZE_MULTIPLIER: (f32, f32) = (1.0, 1.0);
+
+    // reemplementation required, so it is a constans function
+    const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
+        Rgba8 { color: Rgb8 { red, green, blue, standard: std::marker::PhantomData }, alpha }
+    }
+    const BACKGROUND_COLOR: Rgba8 = rgba8(5, 15, 10, 255);
+    const TRANSPARENT: Rgba8 = rgba8(0, 0, 0, 0);
+    const TILE_STROKE_COLOR: Rgba8 = rgba8(140, 140, 130, 255);
+    const TILE_STROKE_WEIGHT: f32 = 5.0;
     
     let window = app.window(model.window_id).expect("Error finding window.");
     
@@ -66,14 +76,32 @@ fn view(app: &App, model: &Model, frame: Frame) {
     );
 
     let size = (
-        scale * SIZE_MULTIPLIER.0,
-        scale * SIZE_MULTIPLIER.1,
+        scale * SIZE_MULTIPLIER.0 * 0.95,
+        scale * SIZE_MULTIPLIER.1 * 0.95,
     );
 
-    
+    let used = Rect::from_w_h(size.0, size.1);
 
     let draw = app.draw();
-    draw.background().color(BLACK);
-    draw.rect().stroke(WHITE).stroke_weight(3.0).color(BLACK);
+    draw.background().color(BACKGROUND_COLOR);
+
+    for x in 0..8 {
+        for y in 0..8 {
+            let rect = Rect::from_wh(used.wh() / 8.0)
+                .bottom_left_of(used)
+                .shift_x(size.0 / 8.0 * x as f32)
+                .shift_y(size.1 / 8.0 * y as f32)
+                .pad(TILE_STROKE_WEIGHT / 2.0);
+            draw.rect()
+                .xy(rect.xy())
+                .wh(rect.wh())
+                .color(TRANSPARENT)
+                .stroke(TILE_STROKE_COLOR)
+                .stroke_weight(TILE_STROKE_WEIGHT);
+        }
+    }
+
+    //draw.rect().stroke(WHITE).stroke_weight(3.0).color(Color::TRANSPARENT);
+    
     draw.to_frame(app, &frame).unwrap();
 }
