@@ -171,12 +171,12 @@ impl Board {
     }
 
     fn get_raw_place(&self, place: usize) -> Tile {
-        Tile::from(((self.state >> place) & 0b11) as u8)
+        Tile::from(((self.state >> (place * 2)) & 0b11) as u8)
     }
 
     fn set_raw_place(&mut self, place: usize, tile: Tile) {
-        self.state &= !(0b11 << place);
-        self.state |= (tile as u128) << place;
+        self.state &= !(0b11 << (place * 2));
+        self.state |= (tile as u128) << (place * 2);
     }
 
     fn raw_place(place: Vec2) -> usize {
