@@ -1,7 +1,5 @@
-use std::iter::Zip;
 use std::{env, process};
 use std::{ffi::OsString, time::Duration};
-use nannou::lyon::lyon_tessellation::StrokeOptions;
 use nannou::prelude::*;
 
 use othello_gui::othello::*;
@@ -72,7 +70,7 @@ fn model(app: &App) -> Model {
                     process::exit(2);
                 });
 
-                let time_limit = Duration::from_millis(time_limit_string.parse().unwrap_or_else(|err| {
+                let time_limit = Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
                     eprintln!("Error converting time limit to integer: '{}'", time_limit_string);
                     process::exit(3);
                 }));
@@ -87,7 +85,7 @@ fn model(app: &App) -> Model {
 
 fn event(app: &App, model: &mut Model, event: Event) {
     match event {
-        Event::WindowEvent { id, simple: Some(e) } => match e {
+        Event::WindowEvent { id: _, simple: Some(e) } => match e {
             WindowEvent::MousePressed(MouseButton::Left) => {
                 if matches!(model.players[model.pos.next_player as usize], Player::Human) {
                     let window = app.window(model.window_id).expect("Error finding window.");
