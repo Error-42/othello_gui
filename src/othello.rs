@@ -7,14 +7,14 @@ use num_traits::FromPrimitive;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromPrimitive)]
-enum Tile {
+pub enum Tile {
     X = 0,
     O = 1,
     Empty = 2,
 }
 
 impl Tile {
-    fn opponent(&self) -> Tile {
+    pub fn opponent(&self) -> Tile {
 
         match self {
             Self::X => Self::O,
@@ -183,7 +183,7 @@ impl Board {
         (place.x * 8 + place.y) as usize
     }
 
-    fn get(&self, pos: Vec2) -> Tile {
+    pub fn get(&self, pos: Vec2) -> Tile {
         self.get_raw_place(Self::raw_place(pos))
     }
 
@@ -194,8 +194,8 @@ impl Board {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Pos {
-    board: Board,
-    next_player: Tile,
+    pub board: Board,
+    pub next_player: Tile,
 }
 
 impl Pos {
