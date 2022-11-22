@@ -260,15 +260,15 @@ impl Pos {
         true
     }
 
+    pub fn valid_move(&self, place: Vec2) -> bool {
+        self.board.get(place) == Tile::Empty && self.clone().place(place)
+    }
+
     pub fn valid_moves(&self) -> Vec<Vec2> {
         let mut ret = Vec::new();
 
         for place in Vec2::board_iter() {
-            if self.board.get(place) != Tile::Empty {
-                continue;
-            }
-
-            if self.clone().place(place) {
+            if self.valid_move(place) {
                 ret.push(place);
             }
         }
