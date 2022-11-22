@@ -150,7 +150,13 @@ pub struct Board {
 
 impl Board {
     pub fn empty() -> Board {
-        Board { state: 0 }
+        let mut board = Board { state: 0 };
+
+        for i in 0..64 {
+            board.set_raw_place(i, Tile::Empty);    
+        }
+
+        board
     }
 
     pub fn new() -> Board {
