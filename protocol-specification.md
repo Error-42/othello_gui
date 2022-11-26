@@ -24,7 +24,7 @@
 - `X`: black
 - `O`: white
 
-`max time`: maximum time for computation in ms, will be whole number
+`max time`: maximum time for computation in ms, will be whole number  
 `move`: consisting of a letter: columns a-h (left-to-right) and a number: rows 1-8 (top-to-bottom)
 
 ### 3rd message AI -> GUI
