@@ -7,14 +7,14 @@ use num_traits::FromPrimitive;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromPrimitive)]
-enum Tile {
+pub enum Tile {
     X = 0,
     O = 1,
     Empty = 2,
 }
 
 impl Tile {
-    fn opponent(&self) -> Tile {
+    pub fn opponent(&self) -> Tile {
 
         match self {
             Self::X => Self::O,
@@ -150,7 +150,13 @@ pub struct Board {
 
 impl Board {
     pub fn empty() -> Board {
-        Board { state: 0 }
+        let mut board = Board { state: 0 };
+
+        for i in 0..64 {
+            board.set_raw_place(i, Tile::Empty);    
+        }
+
+        board
     }
 
     pub fn new() -> Board {
@@ -165,19 +171,19 @@ impl Board {
     }
 
     fn get_raw_place(&self, place: usize) -> Tile {
-        Tile::from(((self.state >> place) & 0b11) as u8)
+        Tile::from(((self.state >> (place * 2)) & 0b11) as u8)
     }
 
     fn set_raw_place(&mut self, place: usize, tile: Tile) {
-        self.state &= !(0b11 << place);
-        self.state |= (tile as u128) << place;
+        self.state &= !(0b11 << (place * 2));
+        self.state |= (tile as u128) << (place * 2);
     }
 
     fn raw_place(place: Vec2) -> usize {
         (place.x * 8 + place.y) as usize
     }
 
-    fn get(&self, pos: Vec2) -> Tile {
+    pub fn get(&self, pos: Vec2) -> Tile {
         self.get_raw_place(Self::raw_place(pos))
     }
 
@@ -188,8 +194,8 @@ impl Board {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Pos {
-    board: Board,
-    next_player: Tile,
+    pub board: Board,
+    pub next_player: Tile,
 }
 
 impl Pos {
@@ -254,15 +260,15 @@ impl Pos {
         true
     }
 
+    pub fn valid_move(&self, place: Vec2) -> bool {
+        self.board.get(place) == Tile::Empty && self.clone().place(place)
+    }
+
     pub fn valid_moves(&self) -> Vec<Vec2> {
         let mut ret = Vec::new();
 
         for place in Vec2::board_iter() {
-            if self.board.get(place) != Tile::Empty {
-                continue;
-            }
-
-            if self.clone().place(place) {
+            if self.valid_move(place) {
                 ret.push(place);
             }
         }
