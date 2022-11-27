@@ -2,9 +2,9 @@ use std::{ffi::OsString, time::Duration};
 use std::io;
 
 pub mod run;
-pub mod othello;
+pub mod othello_core;
 
-use othello::*;
+pub use othello_core::othello::*;
 use run::*;
 
 #[derive(Debug, Clone)]

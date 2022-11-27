@@ -2,7 +2,6 @@ use std::{env, process};
 use std::{ffi::OsString, time::Duration};
 use nannou::prelude::*;
 
-use othello_gui::othello::*;
 use othello_gui::run::*;
 use othello_gui::*;
 
@@ -96,7 +95,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
                     'outer: for x in 0..8 {
                         for y in 0..8 {
                             if rects[x][y].contains(mouse_pos) {
-                                let vec2 = othello::Vec2::new(x as isize, y as isize);
+                                let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
                                 if model.pos.valid_move(vec2) {
                                     model.pos.place(vec2);
                                 }
@@ -136,7 +135,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     for x in 0..8 {
         for y in 0..8 {
-            let vec2 = othello::Vec2::new(x as isize, y as isize);
+            let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
             let rect = rects[x][y].clone().pad(TILE_STROKE_WEIGHT / 2.0);
             draw.rect()
