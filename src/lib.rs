@@ -1,11 +1,12 @@
-use std::{ffi::OsString, time::Duration};
-use std::io;
+use std::ffi::OsString;
+use std::io::{self, Read, Write};
+use std::process::{Command, Stdio, Child};
+use std::time::Duration;
 
-pub mod run;
 pub mod othello_core;
 
 pub use othello_core::othello::*;
-use run::*;
+// use run::*;
 
 #[derive(Debug, Clone)]
 pub struct AI {
@@ -14,9 +15,34 @@ pub struct AI {
 }
 
 impl AI {
-    pub fn run(&self) -> io::Result<Option<Vec2>> {
+    pub fn run(&self, pos: Pos) -> io::Result<AIRunHandle> {
+        let mut proc = if cfg!(target_os = "windows") {
+            Command::new("cmd")
+        } else {
+            todo!("Implement running for linux")
+        };
+    
+        let handle = if cfg!(target_os = "windows") {
+            proc.arg("/C")
+        } else {
+            todo!("Implement running for linux")
+        };
+    
+        let mut child = handle
+            .arg(self.path.clone())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?;
+    
+        let stdin = child.stdin.as_mut().unwrap();
         todo!()
+        //let input = format!("{}{}", pos.board, pos.next_player);
+        //stdin.write_all(input)?;
     }
+}
+
+pub struct AIRunHandle {
+    child: Child,
 }
 
 #[derive(Debug, Clone)]
