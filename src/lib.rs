@@ -34,10 +34,19 @@ impl AI {
             .stdout(Stdio::piped())
             .spawn()?;
     
+        let valid_moves = pos.valid_moves();
+        let input = format!(
+            "{}{}\n{}{}",
+            pos.board,
+            pos.next_player,
+            valid_moves.len(),
+            valid_moves.iter().map(|mv| mv.move_string()).collect::<Vec<_>>().join(" ")
+        );
+        
         let stdin = child.stdin.as_mut().unwrap();
-        todo!()
-        //let input = format!("{}{}", pos.board, pos.next_player);
-        //stdin.write_all(input)?;
+        stdin.write_all(input.as_bytes())?;
+        
+        Ok(AIRunHandle { child })
     }
 }
 
