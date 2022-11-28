@@ -1,8 +1,6 @@
 use std::{env, process};
 use std::{ffi::OsString, time::Duration};
 use nannou::prelude::*;
-
-use othello_gui::run::*;
 use othello_gui::*;
 
 fn main() {
