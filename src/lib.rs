@@ -46,12 +46,26 @@ impl AI {
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(input.as_bytes())?;
         
-        Ok(AIRunHandle { child })
+        Ok(AIRunHandle { child, ended: false })
     }
+}
+
+pub enum AIRunResult {
+    Running,
+    TimeOut,
+    InvalidOuput,
+    ExitedProperly(Vec2),
 }
 
 pub struct AIRunHandle {
     child: Child,
+    ended: bool,
+}
+
+impl AIRunHandle {
+    pub fn check(&mut self) -> AIRunResult {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone)]
