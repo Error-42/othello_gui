@@ -1,7 +1,7 @@
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
-use std::process::{Command, Stdio, Child};
-use std::time::Duration;
+use std::process::{Command, Stdio, Child, ExitStatus};
+use std::time::*;
 
 pub mod othello_core;
 
@@ -46,25 +46,41 @@ impl AI {
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(input.as_bytes())?;
         
-        Ok(AIRunHandle { child, ended: false })
+        let start = Instant::now();
+
+        Ok(AIRunHandle { child, start, time_limit: self.time_limit })
     }
 }
 
 pub enum AIRunResult {
     Running,
     TimeOut,
+    RuntimeError(ExitStatus),
     InvalidOuput,
     ExitedProperly(Vec2),
 }
 
 pub struct AIRunHandle {
     child: Child,
-    ended: bool,
+    start: Instant,
+    time_limit: Duration,
 }
 
 impl AIRunHandle {
-    pub fn check(&mut self) -> AIRunResult {
-        todo!()
+    pub fn check(&mut self) -> io::Result<AIRunResult> {
+        match self.child.try_wait()? {
+            Some(status) => {
+                todo!()
+            }
+            None => {
+                if self.start.elapsed() > self.time_limit {
+                    Ok(AIRunResult::TimeOut)
+                }
+                else {
+                    Ok(AIRunResult::Running)
+                }
+            }
+        }
     }
 }
 
