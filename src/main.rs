@@ -135,7 +135,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
                             if rects[x][y].contains(mouse_pos) {
                                 let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
                                 if model.pos.is_valid_move(vec2) {
-                                    model.pos.place(vec2);
+                                    model.pos.play(vec2);
                                 }
                                 break 'outer;
                             }
@@ -177,7 +177,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                 ai.ai_run_handle = None;
                 drop(ai);
                 if model.pos.is_valid_move(mv) {
-                    model.pos.place(mv);
+                    model.pos.play(mv);
                     initialize_next_player(model);
                 } else {
                     println!("Invalid move played by AI: {}", mv.move_string());
