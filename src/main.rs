@@ -161,9 +161,11 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                 process::exit(0);
             }
             AIRunResult::Success(mv) => {
+                ai.ai_run_handle = None;
                 drop(ai);
                 if model.pos.valid_move(mv) {
                     model.pos.place(mv);
+                    initialize_next_player(model);
                 } else {
                     println!("Invalid move played by AI: {}", mv.move_string());
                     process::exit(0);
