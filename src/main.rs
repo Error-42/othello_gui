@@ -1,5 +1,5 @@
 use std::{env, process};
-use std::{ffi::OsString, time::Duration};
+use std::time::Duration;
 use nannou::prelude::*;
 use othello_gui::*;
 
