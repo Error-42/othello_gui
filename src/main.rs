@@ -53,10 +53,22 @@ impl Model {
     }
 }
 
+fn print_help() {
+    println!("Input players in order as arguments. Players can be: ");
+    println!("Human: simply write 'human'");
+    println!("AI: write the path to the ai, ")
+}
+
 fn model(app: &App) -> Model {
     let window_id = app.new_window().view(view).build().unwrap();
 
     let args: Vec<String> = env::args().collect();
+
+    if args[0] == "help" || args[0] == "/?" || args[0] == "-?" {
+        print_help();
+        process::exit(0);    
+    } 
+
     let mut arg_iter = args.iter();
     arg_iter.next(); // program name
 
@@ -122,7 +134,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
                         for y in 0..8 {
                             if rects[x][y].contains(mouse_pos) {
                                 let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
-                                if model.pos.valid_move(vec2) {
+                                if model.pos.is_valid_move(vec2) {
                                     model.pos.place(vec2);
                                 }
                                 break 'outer;
@@ -164,7 +176,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
             AIRunResult::Success(mv) => {
                 ai.ai_run_handle = None;
                 drop(ai);
-                if model.pos.valid_move(mv) {
+                if model.pos.is_valid_move(mv) {
                     model.pos.place(mv);
                     initialize_next_player(model);
                 } else {
