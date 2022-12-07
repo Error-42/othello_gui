@@ -43,6 +43,7 @@ impl Model {
         rects
     }
 
+    #[allow(unused)]
     fn next_player(&self) -> &Player {
         &self.players[self.pos.next_player as usize]
     }
