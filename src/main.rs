@@ -33,7 +33,7 @@ impl Model {
 
         for x in 0..8 {
             for y in 0..8 {
-                rects[x][y] = Rect::from_wh(used.wh() / 8.0)
+                rects[7 - x][y] = Rect::from_wh(used.wh() / 8.0)
                     .bottom_left_of(used)
                     .shift_x(size.0 / 8.0 * x as f32)
                     .shift_y(size.1 / 8.0 * y as f32);
@@ -41,6 +41,14 @@ impl Model {
         }
 
         rects
+    }
+
+    fn next_player(&self) -> &Player {
+        &self.players[self.pos.next_player as usize]
+    }
+
+    fn next_player_mut(&mut self) -> &mut Player {
+        &mut self.players[self.pos.next_player as usize]
     }
 }
 
@@ -72,12 +80,31 @@ fn model(app: &App) -> Model {
                     process::exit(3);
                 }));
 
-                players.push(Player::AI( AI { path: path.into(), time_limit } ));
+                players.push(Player::AI(AI::new(path.into(), time_limit)));
             },
         }
     }
 
-    Model { window_id, pos: Pos::new(), players: players.try_into().unwrap() }
+    let mut model = Model { 
+        window_id, 
+        pos: Pos::new(),
+        players: players.try_into().unwrap(),
+    };
+
+    initialize_next_player(&mut model);
+
+    model
+}
+
+fn initialize_next_player(model: &mut Model) {
+    let pos = model.pos;
+
+    if let Player::AI(ai) = model.next_player_mut() {
+        ai.run(pos).unwrap_or_else(|err| {
+            eprintln!("Error encountered while trying to run AI: {}", err.to_string());
+            process::exit(4);
+        });
+    }
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
@@ -101,6 +128,8 @@ fn event(app: &App, model: &mut Model, event: Event) {
                             }
                         }
                     }
+
+                    initialize_next_player(model);
                 }
             }
             _ => {}
@@ -109,7 +138,40 @@ fn event(app: &App, model: &mut Model, event: Event) {
     }
 }
 
-fn update(_app: &App, _model: &mut Model, _update: Update) {}
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    if let Player::AI(ai) = model.next_player_mut() {
+        let res = ai
+            .ai_run_handle
+            .as_mut()
+            .expect("Expected an AI run handle for next player")
+            .check();
+
+        match res {
+            AIRunResult::Running => {}
+            AIRunResult::InvalidOuput(err) => {
+                println!("Error reading AI move: {}", err);
+                process::exit(0);
+            }
+            AIRunResult::RuntimeError(status) => {
+                println!("AI program exit code was non-zero: {}", status.code().unwrap());
+                process::exit(0);
+            }
+            AIRunResult::TimeOut => {
+                println!("AI program exceeded time limit");
+                process::exit(0);
+            }
+            AIRunResult::Success(mv) => {
+                drop(ai);
+                if model.pos.valid_move(mv) {
+                    model.pos.place(mv);
+                } else {
+                    println!("Invalid move played by AI: {}", mv.move_string());
+                    process::exit(0);
+                }
+            }
+        }
+    }
+}
 
 fn view(app: &App, model: &Model, frame: Frame) {
     // reemplementation required, so it is a constans function

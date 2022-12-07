@@ -8,14 +8,15 @@ pub mod othello_core;
 pub use othello_core::othello::*;
 // use run::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AI {
     pub path: OsString,
     pub time_limit: Duration,
+    pub ai_run_handle: Option<AIRunHandle>,
 }
 
 impl AI {
-    pub fn run(&self, pos: Pos) -> io::Result<AIRunHandle> {
+    pub fn run(&mut self, pos: Pos) -> io::Result<()> {
         let mut proc = if cfg!(target_os = "windows") {
             Command::new("cmd")
         } else {
@@ -36,19 +37,28 @@ impl AI {
     
         let valid_moves = pos.valid_moves();
         let input = format!(
-            "{}{}\n{}{}",
+            "{}{}\n{}\n{} {}",
             pos.board,
             pos.next_player,
+            self.time_limit.as_millis(),
             valid_moves.len(),
             valid_moves.iter().map(|mv| mv.move_string()).collect::<Vec<_>>().join(" ")
         );
+
+        println!("input:\n{}", input);
         
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(input.as_bytes())?;
         
         let start = Instant::now();
 
-        Ok(AIRunHandle { child, start, time_limit: self.time_limit })
+        self.ai_run_handle = Some(AIRunHandle { child, start, time_limit: self.time_limit });
+
+        Ok(())
+    }
+
+    pub fn new(path: OsString, time_limit: Duration) -> Self {
+        Self { path, time_limit, ai_run_handle: None }
     }
 }
 
@@ -60,6 +70,7 @@ pub enum AIRunResult {
     Success(Vec2),
 }
 
+#[derive(Debug)]
 pub struct AIRunHandle {
     child: Child,
     start: Instant,
@@ -67,11 +78,11 @@ pub struct AIRunHandle {
 }
 
 impl AIRunHandle {
-    pub fn check(&mut self) -> io::Result<AIRunResult> {
-        match self.child.try_wait()? {
+    pub fn check(&mut self) -> AIRunResult {
+        match self.child.try_wait().expect("Error waiting for AI to finish") {
             Some(status) => {
                 if !status.success() {
-                    Ok(AIRunResult::RuntimeError(status))
+                    AIRunResult::RuntimeError(status)
                 }
                 else {
                     let mut output = String::new();
@@ -86,40 +97,40 @@ impl AIRunHandle {
                     let output = output.trim();
 
                     if output.len() != 2 {
-                        return Ok(AIRunResult::InvalidOuput(format!("Output '{}' has invalid length", output)));
+                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid length", output));
                     }
 
                     let x_char = output.chars().nth(0).unwrap();
 
                     if x_char < 'a' || x_char > 'h' {
-                        return Ok(AIRunResult::InvalidOuput(format!("Output '{}' has invalid x coordinate", output)));
+                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid x coordinate", output));
                     }
 
                     let y_char = output.chars().nth(1).unwrap();
 
                     if y_char < '1' || y_char > '8' {
-                        return Ok(AIRunResult::InvalidOuput(format!("Output '{}' has invalid y coordinate", output)));
+                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid y coordinate", output));
                     }
 
                     let x = x_char as u32 - 'a' as u32;
                     let y = y_char as u32 - '1' as u32;
 
-                    Ok(AIRunResult::Success(Vec2::new(x as isize, y as isize)))
+                    AIRunResult::Success(Vec2::new(x as isize, y as isize))
                 }
             }
             None => {
                 if self.start.elapsed() > self.time_limit {
-                    Ok(AIRunResult::TimeOut)
+                    AIRunResult::TimeOut
                 }
                 else {
-                    Ok(AIRunResult::Running)
+                    AIRunResult::Running
                 }
             }
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Player {
     AI(AI),
     Human,
