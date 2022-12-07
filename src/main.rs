@@ -33,7 +33,7 @@ impl Model {
 
         for x in 0..8 {
             for y in 0..8 {
-                rects[7 - x][y] = Rect::from_wh(used.wh() / 8.0)
+                rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
                     .bottom_left_of(used)
                     .shift_x(size.0 / 8.0 * x as f32)
                     .shift_y(size.1 / 8.0 * y as f32);
