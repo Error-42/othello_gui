@@ -1,16 +1,6 @@
 # Othello gui specification
 
-## v1.0.1
-
-### 1st message: AI -> GUI
-
-```
-<version information>
-```
-
-`version information`: version of protocol, this must be `v1.0.x`, where x is a non-negative integer
-
-### 2nd message: GUI -> AI
+## GUI -> AI
 
 ```
 <board (8 lines)>
@@ -29,7 +19,7 @@
 `max time`: maximum time for computation in ms, will be whole number  
 `move`: consisting of a letter: columns a-h (left-to-right) and a number: rows 1-8 (top-to-bottom)
 
-### 3rd message AI -> GUI
+## AI -> GUI
 
 ```
 <move>
@@ -37,13 +27,7 @@
 
 `move`: consisting of a letter: columns a-h (left-to-right) and a number: rows 1-8 (top-to-bottom) 
 
-### Example
-
-AI -> GUI
-
-```
-v1.0.0
-```
+## Example
 
 GUI -> AI
 
