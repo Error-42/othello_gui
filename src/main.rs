@@ -44,12 +44,20 @@ impl Model {
     }
 
     #[allow(unused)]
-    fn next_player(&self) -> &Player {
-        &self.players[self.pos.next_player as usize]
+    fn next_player(&self) -> Option<&Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&self.players[self.pos.next_player as usize])
+        }
     }
 
-    fn next_player_mut(&mut self) -> &mut Player {
-        &mut self.players[self.pos.next_player as usize]
+    fn next_player_mut(&mut self) -> Option<&mut Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&mut self.players[self.pos.next_player as usize])
+        }
     }
 }
 
@@ -112,7 +120,7 @@ fn model(app: &App) -> Model {
 fn initialize_next_player(model: &mut Model) {
     let pos = model.pos;
 
-    if let Player::AI(ai) = model.next_player_mut() {
+    if let Some(Player::AI(ai)) = model.next_player_mut() {
         ai.run(pos).unwrap_or_else(|err| {
             eprintln!("Error encountered while trying to run AI: {}", err.to_string());
             process::exit(4);
@@ -152,7 +160,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    if let Player::AI(ai) = model.next_player_mut() {
+    if let Some(Player::AI(ai)) = model.next_player_mut() {
         let res = ai
             .ai_run_handle
             .as_mut()
