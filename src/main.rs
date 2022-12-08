@@ -61,6 +61,11 @@ impl Model {
     }
 }
 
+fn play(model: &mut Model, mv: othello_gui::Vec2) {
+    println!("{}: {}", model.pos.next_player, mv.move_string());
+    model.pos.play(mv);
+} 
+
 fn print_help() {
     println!("Input players in order as arguments. Players can be: ");
     println!("Human: simply write 'human'");
@@ -143,7 +148,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
                             if rects[x][y].contains(mouse_pos) {
                                 let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
                                 if model.pos.is_valid_move(vec2) {
-                                    model.pos.play(vec2);
+                                    play(model, vec2);
                                 }
                                 break 'outer;
                             }
@@ -185,7 +190,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                 ai.ai_run_handle = None;
                 drop(ai);
                 if model.pos.is_valid_move(mv) {
-                    model.pos.play(mv);
+                    play(model, mv);
                     initialize_next_player(model);
                 } else {
                     println!("Invalid move played by AI: {}", mv.move_string());
