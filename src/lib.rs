@@ -44,8 +44,6 @@ impl AI {
             valid_moves.len(),
             valid_moves.iter().map(|mv| mv.move_string()).collect::<Vec<_>>().join(" ")
         );
-
-        println!("input:\n{}", input);
         
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(input.as_bytes())?;
