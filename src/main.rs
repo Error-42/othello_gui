@@ -138,37 +138,34 @@ fn initialize_next_player(model: &mut Model) {
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
-    match event {
-        Event::WindowEvent {
-            id: _,
-            simple: Some(e),
-        } => match e {
-            WindowEvent::MousePressed(MouseButton::Left) => {
-                if matches!(model.players[model.pos.next_player as usize], Player::Human) {
-                    let window = app.window(model.window_id).expect("Error finding window.");
-                    let mouse_pos = app.mouse.position();
+    let Event::WindowEvent { id: _, simple: Some(WindowEvent::MousePressed(MouseButton::Left)) } = event else {
+        return;
+    };
 
-                    let rects = Model::get_rects(&window);
+    let Some(Player::Human) = model.next_player() else {
+        return;
+    };
 
-                    'outer: for x in 0..8 {
-                        for y in 0..8 {
-                            if rects[x][y].contains(mouse_pos) {
-                                let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
-                                if model.pos.is_valid_move(vec2) {
-                                    play(model, vec2);
-                                }
-                                break 'outer;
-                            }
-                        }
-                    }
+    let window = app.window(model.window_id).expect("Error finding window.");
+    let mouse_pos = app.mouse.position();
 
-                    initialize_next_player(model);
-                }
+    let rects = Model::get_rects(&window);
+
+    'outer: for x in 0..8 {
+        for y in 0..8 {
+            if !rects[x][y].contains(mouse_pos) {
+                continue;
             }
-            _ => {}
-        },
-        _ => {}
+            
+            let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
+            if model.pos.is_valid_move(vec2) {
+                play(model, vec2);
+            }
+            break 'outer;
+        }
     }
+
+    initialize_next_player(model);
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
