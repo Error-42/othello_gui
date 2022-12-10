@@ -130,7 +130,7 @@ fn initialize_next_player(model: &mut Model) {
         ai.run(pos).unwrap_or_else(|err| {
             eprintln!(
                 "Error encountered while trying to run AI: {}",
-                err.to_string()
+                err
             );
             process::exit(4);
         });
@@ -198,7 +198,6 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
             }
             AIRunResult::Success(mv) => {
                 ai.ai_run_handle = None;
-                drop(ai);
                 if model.pos.is_valid_move(mv) {
                     play(model, mv);
                     initialize_next_player(model);
@@ -242,7 +241,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         for y in 0..8 {
             let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
-            let rect = rects[x][y].clone().pad(TILE_STROKE_WEIGHT / 2.0);
+            let rect = rects[x][y].pad(TILE_STROKE_WEIGHT / 2.0);
             draw.rect()
                 .xy(rect.xy())
                 .wh(rect.wh())
@@ -251,7 +250,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 .stroke_weight(TILE_STROKE_WEIGHT);
 
             if model.pos.board.get(vec2) != Tile::Empty {
-                let circle = rect.clone().pad(TILE_STROKE_WEIGHT);
+                let circle = rect.pad(TILE_STROKE_WEIGHT);
                 draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
                     match model.pos.board.get(vec2) {
                         Tile::X => DARK_COLOR,

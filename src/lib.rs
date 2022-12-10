@@ -116,9 +116,9 @@ impl AIRunHandle {
                         ));
                     }
 
-                    let x_char = output.chars().nth(0).unwrap();
+                    let x_char = output.chars().next().unwrap();
 
-                    if x_char < 'a' || x_char > 'h' {
+                    if !('a'..='h').contains(&x_char) {
                         return AIRunResult::InvalidOuput(format!(
                             "Output '{}' has invalid x coordinate",
                             output
@@ -127,7 +127,7 @@ impl AIRunHandle {
 
                     let y_char = output.chars().nth(1).unwrap();
 
-                    if y_char < '1' || y_char > '8' {
+                    if !('1'..='8').contains(&y_char) {
                         return AIRunResult::InvalidOuput(format!(
                             "Output '{}' has invalid y coordinate",
                             output
