@@ -94,52 +94,7 @@ impl AIRunHandle {
             .try_wait()
             .expect("Error waiting for AI to finish")
         {
-            Some(status) => {
-                if !status.success() {
-                    AIRunResult::RuntimeError(status)
-                } else {
-                    let mut output = String::new();
-
-                    self.child
-                        .stdout
-                        .as_mut()
-                        .expect("Error getting stdout of program")
-                        .read_to_string(&mut output)
-                        .expect("Error reading stdout of program");
-
-                    let output = output.trim();
-
-                    if output.len() != 2 {
-                        return AIRunResult::InvalidOuput(format!(
-                            "Output '{}' has invalid length",
-                            output
-                        ));
-                    }
-
-                    let x_char = output.chars().next().unwrap();
-
-                    if !('a'..='h').contains(&x_char) {
-                        return AIRunResult::InvalidOuput(format!(
-                            "Output '{}' has invalid x coordinate",
-                            output
-                        ));
-                    }
-
-                    let y_char = output.chars().nth(1).unwrap();
-
-                    if !('1'..='8').contains(&y_char) {
-                        return AIRunResult::InvalidOuput(format!(
-                            "Output '{}' has invalid y coordinate",
-                            output
-                        ));
-                    }
-
-                    let x = x_char as u32 - 'a' as u32;
-                    let y = y_char as u32 - '1' as u32;
-
-                    AIRunResult::Success(Vec2::new(x as isize, y as isize))
-                }
-            }
+            Some(status) => self.handle_finished_child(status),
             None => {
                 if self.start.elapsed() > self.time_limit {
                     AIRunResult::TimeOut
@@ -148,6 +103,53 @@ impl AIRunHandle {
                 }
             }
         }
+    }
+
+    fn handle_finished_child(&mut self, status: ExitStatus) -> AIRunResult {
+        if !status.success() {
+            return AIRunResult::RuntimeError(status);
+        }
+
+        let mut output = String::new();
+
+        self.child
+            .stdout
+            .as_mut()
+            .expect("Error getting stdout of program")
+            .read_to_string(&mut output)
+            .expect("Error reading stdout of program");
+
+        let output = output.trim();
+
+        if output.len() != 2 {
+            return AIRunResult::InvalidOuput(format!(
+                "Output '{}' has invalid length",
+                output
+            ));
+        }
+
+        let x_char = output.chars().next().unwrap();
+
+        if !('a'..='h').contains(&x_char) {
+            return AIRunResult::InvalidOuput(format!(
+                "Output '{}' has invalid x coordinate",
+                output
+            ));
+        }
+
+        let y_char = output.chars().nth(1).unwrap();
+
+        if !('1'..='8').contains(&y_char) {
+            return AIRunResult::InvalidOuput(format!(
+                "Output '{}' has invalid y coordinate",
+                output
+            ));
+        }
+
+        let x = x_char as u32 - 'a' as u32;
+        let y = y_char as u32 - '1' as u32;
+
+        AIRunResult::Success(Vec2::new(x as isize, y as isize))
     }
 }
 
