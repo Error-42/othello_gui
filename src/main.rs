@@ -1,7 +1,7 @@
-use std::{env, process};
-use std::time::Duration;
 use nannou::prelude::*;
 use othello_gui::*;
+use std::time::Duration;
+use std::{env, process};
 
 fn main() {
     nannou::app(model).event(event).update(update).run();
@@ -21,12 +21,9 @@ impl Model {
             window.inner_size_points().0 / SIZE_MULTIPLIER.0,
             window.inner_size_points().1 / SIZE_MULTIPLIER.1,
         );
-    
-        let size = (
-            scale * SIZE_MULTIPLIER.0,
-            scale * SIZE_MULTIPLIER.1,
-        );
-    
+
+        let size = (scale * SIZE_MULTIPLIER.0, scale * SIZE_MULTIPLIER.1);
+
         let used = Rect::from_w_h(size.0, size.1);
 
         let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
@@ -64,7 +61,7 @@ impl Model {
 fn play(model: &mut Model, mv: othello_gui::Vec2) {
     println!("{}: {}", model.pos.next_player, mv.move_string());
     model.pos.play(mv);
-} 
+}
 
 fn print_help() {
     println!("Input players in order as arguments. Players can be: ");
@@ -79,8 +76,8 @@ fn model(app: &App) -> Model {
 
     if args[0] == "help" || args[0] == "/?" || args[0] == "-?" {
         print_help();
-        process::exit(0);    
-    } 
+        process::exit(0);
+    }
 
     let mut arg_iter = args.iter();
     arg_iter.next(); // program name
@@ -101,18 +98,22 @@ fn model(app: &App) -> Model {
                     process::exit(2);
                 });
 
-                let time_limit = Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
-                    eprintln!("Error converting time limit to integer: '{}'", time_limit_string);
-                    process::exit(3);
-                }));
+                let time_limit =
+                    Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
+                        eprintln!(
+                            "Error converting time limit to integer: '{}'",
+                            time_limit_string
+                        );
+                        process::exit(3);
+                    }));
 
                 players.push(Player::AI(AI::new(path.into(), time_limit)));
-            },
+            }
         }
     }
 
-    let mut model = Model { 
-        window_id, 
+    let mut model = Model {
+        window_id,
         pos: Pos::new(),
         players: players.try_into().unwrap(),
     };
@@ -127,7 +128,10 @@ fn initialize_next_player(model: &mut Model) {
 
     if let Some(Player::AI(ai)) = model.next_player_mut() {
         ai.run(pos).unwrap_or_else(|err| {
-            eprintln!("Error encountered while trying to run AI: {}", err.to_string());
+            eprintln!(
+                "Error encountered while trying to run AI: {}",
+                err.to_string()
+            );
             process::exit(4);
         });
     }
@@ -135,7 +139,10 @@ fn initialize_next_player(model: &mut Model) {
 
 fn event(app: &App, model: &mut Model, event: Event) {
     match event {
-        Event::WindowEvent { id: _, simple: Some(e) } => match e {
+        Event::WindowEvent {
+            id: _,
+            simple: Some(e),
+        } => match e {
             WindowEvent::MousePressed(MouseButton::Left) => {
                 if matches!(model.players[model.pos.next_player as usize], Player::Human) {
                     let window = app.window(model.window_id).expect("Error finding window.");
@@ -179,7 +186,10 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                 process::exit(0);
             }
             AIRunResult::RuntimeError(status) => {
-                println!("AI program exit code was non-zero: {}", status.code().unwrap());
+                println!(
+                    "AI program exit code was non-zero: {}",
+                    status.code().unwrap()
+                );
                 process::exit(0);
             }
             AIRunResult::TimeOut => {
@@ -204,7 +214,15 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
     // reemplementation required, so it is a constans function
     const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
-        Rgba8 { color: Rgb8 { red, green, blue, standard: std::marker::PhantomData }, alpha }
+        Rgba8 {
+            color: Rgb8 {
+                red,
+                green,
+                blue,
+                standard: std::marker::PhantomData,
+            },
+            alpha,
+        }
     }
     const BACKGROUND_COLOR: Rgba8 = rgba8(30, 90, 60, 255);
     const TRANSPARENT: Rgba8 = rgba8(0, 0, 0, 0);
@@ -212,9 +230,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
     const LIGHT_COLOR: Rgba8 = TILE_STROKE_COLOR;
     const DARK_COLOR: Rgba8 = rgba8(5, 10, 15, 255);
     const TILE_STROKE_WEIGHT: f32 = 5.0;
-    
-    let window = app.window(model.window_id).expect("Error finding window.");
 
+    let window = app.window(model.window_id).expect("Error finding window.");
 
     let draw = app.draw();
     draw.background().color(BACKGROUND_COLOR);
@@ -235,19 +252,18 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
             if model.pos.board.get(vec2) != Tile::Empty {
                 let circle = rect.clone().pad(TILE_STROKE_WEIGHT);
-                draw.ellipse()
-                    .xy(circle.xy())
-                    .wh(circle.wh())
-                    .color(match model.pos.board.get(vec2) {
+                draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
+                    match model.pos.board.get(vec2) {
                         Tile::X => DARK_COLOR,
                         Tile::O => LIGHT_COLOR,
                         _ => panic!("Invalid tile while drawing"),
-                    });
+                    },
+                );
             }
         }
     }
 
     //draw.rect().stroke(WHITE).stroke_weight(3.0).color(Color::TRANSPARENT);
-    
+
     draw.to_frame(app, &frame).unwrap();
 }

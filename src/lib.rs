@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
-use std::process::{Command, Stdio, Child, ExitStatus};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::*;
 
 pub mod othello_core;
@@ -22,19 +22,19 @@ impl AI {
         } else {
             todo!("Implement running for linux")
         };
-    
+
         let handle = if cfg!(target_os = "windows") {
             proc.arg("/C")
         } else {
             todo!("Implement running for linux")
         };
-    
+
         let mut child = handle
             .arg(self.path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()?;
-    
+
         let valid_moves = pos.valid_moves();
         let input = format!(
             "{}{}\n{}\n{} {}",
@@ -42,21 +42,33 @@ impl AI {
             pos.next_player,
             self.time_limit.as_millis(),
             valid_moves.len(),
-            valid_moves.iter().map(|mv| mv.move_string()).collect::<Vec<_>>().join(" ")
+            valid_moves
+                .iter()
+                .map(|mv| mv.move_string())
+                .collect::<Vec<_>>()
+                .join(" ")
         );
-        
+
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(input.as_bytes())?;
-        
+
         let start = Instant::now();
 
-        self.ai_run_handle = Some(AIRunHandle { child, start, time_limit: self.time_limit });
+        self.ai_run_handle = Some(AIRunHandle {
+            child,
+            start,
+            time_limit: self.time_limit,
+        });
 
         Ok(())
     }
 
     pub fn new(path: OsString, time_limit: Duration) -> Self {
-        Self { path, time_limit, ai_run_handle: None }
+        Self {
+            path,
+            time_limit,
+            ai_run_handle: None,
+        }
     }
 }
 
@@ -77,37 +89,49 @@ pub struct AIRunHandle {
 
 impl AIRunHandle {
     pub fn check(&mut self) -> AIRunResult {
-        match self.child.try_wait().expect("Error waiting for AI to finish") {
+        match self
+            .child
+            .try_wait()
+            .expect("Error waiting for AI to finish")
+        {
             Some(status) => {
                 if !status.success() {
                     AIRunResult::RuntimeError(status)
-                }
-                else {
+                } else {
                     let mut output = String::new();
 
                     self.child
                         .stdout
                         .as_mut()
-                        .expect("Error getting stdout of program") 
+                        .expect("Error getting stdout of program")
                         .read_to_string(&mut output)
                         .expect("Error reading stdout of program");
 
                     let output = output.trim();
 
                     if output.len() != 2 {
-                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid length", output));
+                        return AIRunResult::InvalidOuput(format!(
+                            "Output '{}' has invalid length",
+                            output
+                        ));
                     }
 
                     let x_char = output.chars().nth(0).unwrap();
 
                     if x_char < 'a' || x_char > 'h' {
-                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid x coordinate", output));
+                        return AIRunResult::InvalidOuput(format!(
+                            "Output '{}' has invalid x coordinate",
+                            output
+                        ));
                     }
 
                     let y_char = output.chars().nth(1).unwrap();
 
                     if y_char < '1' || y_char > '8' {
-                        return AIRunResult::InvalidOuput(format!("Output '{}' has invalid y coordinate", output));
+                        return AIRunResult::InvalidOuput(format!(
+                            "Output '{}' has invalid y coordinate",
+                            output
+                        ));
                     }
 
                     let x = x_char as u32 - 'a' as u32;
@@ -119,8 +143,7 @@ impl AIRunHandle {
             None => {
                 if self.start.elapsed() > self.time_limit {
                     AIRunResult::TimeOut
-                }
-                else {
+                } else {
                     AIRunResult::Running
                 }
             }
