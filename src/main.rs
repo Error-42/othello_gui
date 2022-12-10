@@ -128,10 +128,7 @@ fn initialize_next_player(model: &mut Model) {
 
     if let Some(Player::AI(ai)) = model.next_player_mut() {
         ai.run(pos).unwrap_or_else(|err| {
-            eprintln!(
-                "Error encountered while trying to run AI: {}",
-                err
-            );
+            eprintln!("Error encountered while trying to run AI: {}", err);
             process::exit(4);
         });
     }
@@ -156,7 +153,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
             if !rects[x][y].contains(mouse_pos) {
                 continue;
             }
-            
+
             let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
             if model.pos.is_valid_move(vec2) {
                 play(model, vec2);
