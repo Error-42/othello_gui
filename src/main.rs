@@ -135,7 +135,10 @@ fn initialize_next_player(model: &mut Model) {
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
-    let Event::WindowEvent { id: _, simple: Some(WindowEvent::MousePressed(MouseButton::Left)) } = event else {
+    let Event::WindowEvent {
+        id: _,
+        simple: Some(WindowEvent::MousePressed(MouseButton::Left)),
+    } = event else {
         return;
     };
 
