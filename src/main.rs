@@ -151,18 +151,15 @@ fn event(app: &App, model: &mut Model, event: Event) {
 
     let rects = Model::get_rects(&window);
 
-    'outer: for x in 0..8 {
-        for y in 0..8 {
-            if !rects[x][y].contains(mouse_pos) {
-                continue;
-            }
-
-            let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
-            if model.pos.is_valid_move(vec2) {
-                play(model, vec2);
-            }
-            break 'outer;
+    for coor in othello_gui::Vec2::board_iter() {
+        if !rects[coor.x as usize][coor.y as usize].contains(mouse_pos) {
+            continue;
         }
+
+        if model.pos.is_valid_move(coor) {
+            play(model, coor);
+        }
+        break;
     }
 
     initialize_next_player(model);
