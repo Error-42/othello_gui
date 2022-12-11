@@ -20,7 +20,7 @@ impl AI {
         let valid_moves = pos.valid_moves();
 
         format!(
-            "{}{}\n{}\n{} {}",
+            "{}{}\n{}\n{} {}\n",
             pos.board,
             pos.next_player,
             self.time_limit.as_millis(),
@@ -54,6 +54,7 @@ impl AI {
 
         let stdin = child.stdin.as_mut().unwrap();
         stdin.write_all(self.input(pos).as_bytes())?;
+        stdin.flush().expect("Unable to flush stdin");
 
         let start = Instant::now();
 
