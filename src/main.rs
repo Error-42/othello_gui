@@ -126,12 +126,31 @@ fn model(app: &App) -> Model {
 fn initialize_next_player(model: &mut Model) {
     let pos = model.pos;
 
-    if let Some(Player::AI(ai)) = model.next_player_mut() {
-        ai.run(pos).unwrap_or_else(|err| {
-            eprintln!("Error encountered while trying to run AI: {}", err);
-            process::exit(4);
-        });
+    match model.next_player_mut() {
+        Some(Player::AI(ai)) => {
+            ai.run(pos).unwrap_or_else(|err| {
+                eprintln!("Error encountered while trying to run AI: {}", err);
+                process::exit(4);
+            });
+        }
+        Some(Player::Human) => {}
+        None => {
+            println!("Game ended, winner: {}", model.pos.winner());
+        }
     }
+}
+
+fn print_input_for_debug(model: &mut Model) {
+    println!("Input was: ");
+
+    let pos = model.pos;
+
+    let Some(Player::AI(ai)) = model.next_player_mut() else {
+        panic!("print_input_for_debug was not called with an ai as next player");
+    };
+
+    println!("Input was:");
+    println!("{}", ai.input(pos));
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
@@ -166,39 +185,50 @@ fn event(app: &App, model: &mut Model, event: Event) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    if let Some(Player::AI(ai)) = model.next_player_mut() {
-        let res = ai
-            .ai_run_handle
-            .as_mut()
-            .expect("Expected an AI run handle for next player")
-            .check();
+    let Some(Player::AI(ai)) = model.next_player_mut() else {
+        return;
+    };
 
-        match res {
-            AIRunResult::Running => {}
-            AIRunResult::InvalidOuput(err) => {
-                println!("Error reading AI move: {}", err);
-                process::exit(0);
-            }
-            AIRunResult::RuntimeError(status) => {
+    let res = ai
+        .ai_run_handle
+        .as_mut()
+        .expect("Expected an AI run handle for next player")
+        .check();
+
+    match res {
+        AIRunResult::Running => {}
+        AIRunResult::InvalidOuput(err) => {
+            println!("Error reading AI {} move: {}", model.pos.next_player, err);
+            print_input_for_debug(model);
+            process::exit(0);
+        }
+        AIRunResult::RuntimeError(status) => {
+            println!(
+                "AI {} program exit code was non-zero: {}",
+                model.pos.next_player,
+                status.code().unwrap(),
+            );
+            print_input_for_debug(model);
+            process::exit(0);
+        }
+        AIRunResult::TimeOut => {
+            println!("AI {} program exceeded time limit", model.pos.next_player);
+            print_input_for_debug(model);
+            process::exit(0);
+        }
+        AIRunResult::Success(mv) => {
+            ai.ai_run_handle = None;
+            if model.pos.is_valid_move(mv) {
+                play(model, mv);
+                initialize_next_player(model);
+            } else {
                 println!(
-                    "AI program exit code was non-zero: {}",
-                    status.code().unwrap()
+                    "Invalid move played by AI {}: {}",
+                    model.pos.next_player,
+                    mv.move_string()
                 );
+                print_input_for_debug(model);
                 process::exit(0);
-            }
-            AIRunResult::TimeOut => {
-                println!("AI program exceeded time limit");
-                process::exit(0);
-            }
-            AIRunResult::Success(mv) => {
-                ai.ai_run_handle = None;
-                if model.pos.is_valid_move(mv) {
-                    play(model, mv);
-                    initialize_next_player(model);
-                } else {
-                    println!("Invalid move played by AI: {}", mv.move_string());
-                    process::exit(0);
-                }
             }
         }
     }

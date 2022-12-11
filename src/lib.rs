@@ -16,6 +16,23 @@ pub struct AI {
 }
 
 impl AI {
+    pub fn input(&self, pos: Pos) -> String {
+        let valid_moves = pos.valid_moves();
+
+        format!(
+            "{}{}\n{}\n{} {}",
+            pos.board,
+            pos.next_player,
+            self.time_limit.as_millis(),
+            valid_moves.len(),
+            valid_moves
+                .iter()
+                .map(|mv| mv.move_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
+    }
+
     pub fn run(&mut self, pos: Pos) -> io::Result<()> {
         let mut proc = if cfg!(target_os = "windows") {
             Command::new("cmd")
@@ -35,22 +52,8 @@ impl AI {
             .stdout(Stdio::piped())
             .spawn()?;
 
-        let valid_moves = pos.valid_moves();
-        let input = format!(
-            "{}{}\n{}\n{} {}",
-            pos.board,
-            pos.next_player,
-            self.time_limit.as_millis(),
-            valid_moves.len(),
-            valid_moves
-                .iter()
-                .map(|mv| mv.move_string())
-                .collect::<Vec<_>>()
-                .join(" ")
-        );
-
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write_all(input.as_bytes())?;
+        stdin.write_all(self.input(pos).as_bytes())?;
 
         let start = Instant::now();
 
@@ -122,10 +125,7 @@ impl AIRunHandle {
         let output = output.trim();
 
         if output.len() != 2 {
-            return AIRunResult::InvalidOuput(format!(
-                "Output '{}' has invalid length",
-                output
-            ));
+            return AIRunResult::InvalidOuput(format!("Output '{}' has invalid length", output));
         }
 
         let x_char = output.chars().next().unwrap();
