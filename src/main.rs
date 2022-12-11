@@ -66,7 +66,10 @@ fn play(model: &mut Model, mv: othello_gui::Vec2) {
 fn print_help() {
     println!("Input players in order as arguments. Players can be: ");
     println!("Human: simply write 'human'");
-    println!("AI: write the path to the ai, ")
+    println!("AI: write the path to the ai, then maximum time in milliseconds.");
+    println!();
+    println!("Example: ");
+    println!(r#"PS loc> .\othello_gui.exe human ..\..\test_programs\othello_ai.exe 1000"#);
 }
 
 fn model(app: &App) -> Model {
@@ -74,7 +77,7 @@ fn model(app: &App) -> Model {
 
     let args: Vec<String> = env::args().collect();
 
-    if args[0] == "help" || args[0] == "/?" || args[0] == "-?" {
+    if args[1] == "help" || args[1] == "--help" || args[1] == "/?" || args[1] == "-?" {
         print_help();
         process::exit(0);
     }
