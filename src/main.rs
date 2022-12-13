@@ -58,8 +58,13 @@ impl Model {
     }
 }
 
-fn play(model: &mut Model, mv: othello_gui::Vec2) {
-    println!("{}: {}", model.pos.next_player, mv.move_string());
+fn play(model: &mut Model, mv: othello_gui::Vec2, notes: &str) {
+    println!(
+        "{}: {} ({})",
+        model.pos.next_player,
+        mv.move_string(),
+        notes
+    );
     model.pos.play(mv);
 }
 
@@ -179,7 +184,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
         }
 
         if model.pos.is_valid_move(coor) {
-            play(model, coor);
+            play(model, coor, "human");
         }
         break;
     }
@@ -219,10 +224,10 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
             print_input_for_debug(model);
             process::exit(0);
         }
-        AIRunResult::Success(mv) => {
+        AIRunResult::Success(mv, notes) => {
             ai.ai_run_handle = None;
             if model.pos.is_valid_move(mv) {
-                play(model, mv);
+                play(model, mv, &notes.unwrap_or("no notes provided".to_owned()));
                 initialize_next_player(model);
             } else {
                 println!(
