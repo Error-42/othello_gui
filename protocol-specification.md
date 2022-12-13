@@ -23,9 +23,11 @@
 
 ```
 <move>
+<notes (optional)>
 ```
 
 `move`: consisting of a letter: columns a-h (left-to-right) and a number: rows 1-8 (top-to-bottom) 
+`notes`: additional info provided to display
 
 ## Example
 
