@@ -163,7 +163,7 @@ impl AIRunHandle {
         let mv = Vec2::new(x as isize, y as isize);
 
         if output.len() == 2 {
-            AIRunResult::Success(mv, Some(output[2].to_owned()))
+            AIRunResult::Success(mv, Some(output[1].to_owned()))
         }
         else {
             AIRunResult::Success(mv, None)
