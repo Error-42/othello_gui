@@ -69,12 +69,19 @@ fn play(model: &mut Model, mv: othello_gui::Vec2, notes: &str) {
 }
 
 fn print_help() {
+    print_version_info();
+
     println!("Input players in order as arguments. Players can be: ");
     println!("Human: simply write 'human'");
     println!("AI: write the path to the ai, then maximum time in milliseconds.");
     println!();
     println!("Example: ");
     println!(r#"PS loc> .\othello_gui.exe human ..\..\test_programs\othello_ai.exe 1000"#);
+}
+
+fn print_version_info() {
+    println!("Othello GUI v0.3.0 by Error-42");
+    println!("");
 }
 
 fn model(app: &App) -> Model {
@@ -84,6 +91,11 @@ fn model(app: &App) -> Model {
 
     if args[1] == "help" || args[1] == "--help" || args[1] == "/?" || args[1] == "-?" {
         print_help();
+        process::exit(0);
+    }
+
+    if args[1] == "version" || args[1] == "--version" || args[1] == "-v" {
+        print_version_info();
         process::exit(0);
     }
 
