@@ -168,8 +168,7 @@ fn print_input_for_debug(model: &mut Model) {
     let Some(Player::AI(ai)) = model.next_player_mut() else {
         panic!("print_input_for_debug was not called with an ai as next player");
     };
-
-    println!("Input was:");
+    
     println!("{}", ai.input(pos));
 }
 
