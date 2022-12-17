@@ -10,6 +10,8 @@ fn main() {
 struct Model {
     window_id: window::Id,
     pos: Pos,
+    last_pos: Pos,
+    last_play_place: Option<othello_gui::Vec2>,
     players: [Player; 2],
 }
 
@@ -65,6 +67,8 @@ fn play(model: &mut Model, mv: othello_gui::Vec2, notes: &str) {
         mv.move_string(),
         notes
     );
+    model.last_pos = model.pos;
+    model.last_play_place = Some(mv);
     model.pos.play(mv);
 }
 
@@ -80,7 +84,7 @@ fn print_help() {
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.3.0 by Error-42");
+    println!("Othello GUI v0.4.0 by Error-42");
     println!("");
 }
 
@@ -135,6 +139,8 @@ fn model(app: &App) -> Model {
     let mut model = Model {
         window_id,
         pos: Pos::new(),
+        last_pos: Pos::new(),
+        last_play_place: None,
         players: players.try_into().unwrap(),
     };
 
@@ -266,7 +272,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
             alpha,
         }
     }
+
     const BACKGROUND_COLOR: Rgba8 = rgba8(30, 90, 60, 255);
+    const CHANGE_HIGHLIGHT_COLOR: Rgba8 = rgba8(91, 203, 215, 255);
+    const MOVE_HIGHLIGHT_COLOR: Rgba8 = rgba8(53, 103, 202, 255);
     const TRANSPARENT: Rgba8 = rgba8(0, 0, 0, 0);
     const TILE_STROKE_COLOR: Rgba8 = rgba8(250, 250, 230, 255);
     const LIGHT_COLOR: Rgba8 = TILE_STROKE_COLOR;
@@ -284,11 +293,19 @@ fn view(app: &App, model: &Model, frame: Frame) {
         for y in 0..8 {
             let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
+            let fill_color = if Some(vec2) == model.last_play_place {
+                MOVE_HIGHLIGHT_COLOR
+            } else if model.pos.board.get(vec2) != model.last_pos.board.get(vec2) {
+                CHANGE_HIGHLIGHT_COLOR
+            } else {
+                TRANSPARENT
+            };
+
             let rect = rects[x][y].pad(TILE_STROKE_WEIGHT / 2.0);
             draw.rect()
                 .xy(rect.xy())
                 .wh(rect.wh())
-                .color(TRANSPARENT)
+                .color(fill_color)
                 .stroke(TILE_STROKE_COLOR)
                 .stroke_weight(TILE_STROKE_WEIGHT);
 
