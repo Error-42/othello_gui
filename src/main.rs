@@ -81,6 +81,11 @@ fn print_help() {
     println!();
     println!("Example: ");
     println!(r#"PS loc> .\othello_gui.exe human ..\..\test_programs\othello_ai.exe 1000"#);
+    println!();
+    println!("Special commands:");
+    println!("help: displays this");
+    println!("version: displays version info");
+    println!();
 }
 
 fn print_version_info() {
