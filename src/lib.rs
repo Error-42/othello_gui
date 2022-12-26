@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio, self};
 use std::time::*;
 
 pub mod othello_core;
@@ -175,4 +175,141 @@ impl AIRunHandle {
 pub enum Player {
     AI(AI),
     Human,
+}
+
+pub struct Game {
+    pub id: usize,
+    pub pos: Pos,
+    pub last_pos: Pos,
+    pub last_play_place: Option<Vec2>,
+    pub players: [Player; 2],
+}
+
+impl Game {
+    fn print_id(&self) {
+        print!("#{:_>2}>> ", self.id);
+    }
+
+    pub fn next_player(&self) -> Option<&Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&self.players[self.pos.next_player as usize])
+        }
+    }
+
+    pub fn next_player_mut(&mut self) -> Option<&mut Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&mut self.players[self.pos.next_player as usize])
+        }
+    }
+
+    pub fn play(&mut self, mv: Vec2, notes: &str) {
+        self.print_id();
+        println!(
+            "{}: {} ({})",
+            self.pos.next_player,
+            mv.move_string(),
+            notes
+        );
+        self.last_pos = self.pos;
+        self.last_play_place = Some(mv);
+        self.pos.play(mv);
+    }
+
+    pub fn initialize_next_player(&mut self) {
+        let pos = self.pos;
+
+        match self.next_player_mut() {
+            Some(Player::AI(ai)) => {
+                ai.run(pos).unwrap_or_else(|err| {
+                    eprintln!("Error encountered while trying to run AI: {}", err);
+                    process::exit(4);
+                });
+            }
+            Some(Player::Human) => {}
+            None => {
+                self.print_id();
+                println!("Game ended, winner: {}", self.pos.winner());
+            }
+        }
+    }
+
+    pub fn new(id: usize, players: [Player; 2]) -> Self {
+        Self {
+            id,
+            pos: Pos::new(),
+            last_pos: Pos::new(),
+            last_play_place: None,
+            players,
+        }
+    }
+
+    pub fn print_input_for_debug(&mut self) {
+        self.print_id();
+        println!("Input was: ");
+
+        let pos = self.pos;
+    
+        let Some(Player::AI(ai)) = self.next_player_mut() else {
+            panic!("print_input_for_debug was not called with an ai as next player");
+        };
+        
+        println!("{}", ai.input(pos));
+    }
+
+    pub fn update(&mut self) {
+        let Some(Player::AI(ai)) = self.next_player_mut() else {
+            return;
+        };
+    
+        let res = ai
+            .ai_run_handle
+            .as_mut()
+            .expect("Expected an AI run handle for next player")
+            .check();
+    
+        match res {
+            AIRunResult::Running => {}
+            AIRunResult::InvalidOuput(err) => {
+                self.print_id();
+                println!("Error reading AI {} move: {}", self.pos.next_player, err);
+                self.print_input_for_debug();
+                process::exit(0);
+            }
+            AIRunResult::RuntimeError(status) => {
+                self.print_id();
+                println!(
+                    "AI {} program exit code was non-zero: {}",
+                    self.pos.next_player,
+                    status.code().unwrap(),
+                );
+                self.print_input_for_debug();
+                process::exit(0);
+            }
+            AIRunResult::TimeOut => {
+                self.print_id();
+                println!("AI {} program exceeded time limit", self.pos.next_player);
+                self.print_input_for_debug();
+                process::exit(0);
+            }
+            AIRunResult::Success(mv, notes) => {
+                ai.ai_run_handle = None;
+                if self.pos.is_valid_move(mv) {
+                    self.play(mv, &notes.unwrap_or("no notes provided".to_owned()));
+                    self.initialize_next_player();
+                } else {
+                    println!(
+                        "Invalid move played by AI {}: {}",
+                        self.pos.next_player,
+                        mv.move_string()
+                    );
+                    self.print_input_for_debug();
+                    process::exit(0);
+                }
+            }
+        }
+    }
 }

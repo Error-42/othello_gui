@@ -9,10 +9,8 @@ fn main() {
 
 struct Model {
     window_id: window::Id,
-    pos: Pos,
-    last_pos: Pos,
-    last_play_place: Option<othello_gui::Vec2>,
-    players: [Player; 2],
+    games: Vec<Game>,
+    showed_game_idx: usize,
 }
 
 impl Model {
@@ -42,34 +40,13 @@ impl Model {
         rects
     }
 
-    #[allow(unused)]
-    fn next_player(&self) -> Option<&Player> {
-        if self.pos.next_player == Tile::Empty {
-            None
-        } else {
-            Some(&self.players[self.pos.next_player as usize])
-        }
+    fn showed_game(&self) -> &Game {
+        &self.games[self.showed_game_idx]
     }
 
-    fn next_player_mut(&mut self) -> Option<&mut Player> {
-        if self.pos.next_player == Tile::Empty {
-            None
-        } else {
-            Some(&mut self.players[self.pos.next_player as usize])
-        }
+    fn showed_game_mut(&mut self) -> &mut Game {
+        &mut self.games[self.showed_game_idx]
     }
-}
-
-fn play(model: &mut Model, mv: othello_gui::Vec2, notes: &str) {
-    println!(
-        "{}: {} ({})",
-        model.pos.next_player,
-        mv.move_string(),
-        notes
-    );
-    model.last_pos = model.pos;
-    model.last_play_place = Some(mv);
-    model.pos.play(mv);
 }
 
 fn print_help() {
@@ -143,44 +120,13 @@ fn model(app: &App) -> Model {
 
     let mut model = Model {
         window_id,
-        pos: Pos::new(),
-        last_pos: Pos::new(),
-        last_play_place: None,
-        players: players.try_into().unwrap(),
+        games: vec![Game::new(0, players.try_into().unwrap())],
+        showed_game_idx: 0,
     };
 
-    initialize_next_player(&mut model);
+    model.showed_game_mut().initialize_next_player();
 
     model
-}
-
-fn initialize_next_player(model: &mut Model) {
-    let pos = model.pos;
-
-    match model.next_player_mut() {
-        Some(Player::AI(ai)) => {
-            ai.run(pos).unwrap_or_else(|err| {
-                eprintln!("Error encountered while trying to run AI: {}", err);
-                process::exit(4);
-            });
-        }
-        Some(Player::Human) => {}
-        None => {
-            println!("Game ended, winner: {}", model.pos.winner());
-        }
-    }
-}
-
-fn print_input_for_debug(model: &mut Model) {
-    println!("Input was: ");
-
-    let pos = model.pos;
-
-    let Some(Player::AI(ai)) = model.next_player_mut() else {
-        panic!("print_input_for_debug was not called with an ai as next player");
-    };
-    
-    println!("{}", ai.input(pos));
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
@@ -191,7 +137,10 @@ fn event(app: &App, model: &mut Model, event: Event) {
         return;
     };
 
-    let Some(Player::Human) = model.next_player() else {
+    // cannot use model.showed_game_mut() as that mut borrows whole model 
+    let game = &mut model.games[model.showed_game_idx];
+
+    let Some(Player::Human) = game.next_player() else {
         return;
     };
 
@@ -205,62 +154,18 @@ fn event(app: &App, model: &mut Model, event: Event) {
             continue;
         }
 
-        if model.pos.is_valid_move(coor) {
-            play(model, coor, "human");
+        if game.pos.is_valid_move(coor) {
+            game.play(coor, "human");
         }
         break;
     }
 
-    initialize_next_player(model);
+    game.initialize_next_player();
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    let Some(Player::AI(ai)) = model.next_player_mut() else {
-        return;
-    };
-
-    let res = ai
-        .ai_run_handle
-        .as_mut()
-        .expect("Expected an AI run handle for next player")
-        .check();
-
-    match res {
-        AIRunResult::Running => {}
-        AIRunResult::InvalidOuput(err) => {
-            println!("Error reading AI {} move: {}", model.pos.next_player, err);
-            print_input_for_debug(model);
-            process::exit(0);
-        }
-        AIRunResult::RuntimeError(status) => {
-            println!(
-                "AI {} program exit code was non-zero: {}",
-                model.pos.next_player,
-                status.code().unwrap(),
-            );
-            print_input_for_debug(model);
-            process::exit(0);
-        }
-        AIRunResult::TimeOut => {
-            println!("AI {} program exceeded time limit", model.pos.next_player);
-            print_input_for_debug(model);
-            process::exit(0);
-        }
-        AIRunResult::Success(mv, notes) => {
-            ai.ai_run_handle = None;
-            if model.pos.is_valid_move(mv) {
-                play(model, mv, &notes.unwrap_or("no notes provided".to_owned()));
-                initialize_next_player(model);
-            } else {
-                println!(
-                    "Invalid move played by AI {}: {}",
-                    model.pos.next_player,
-                    mv.move_string()
-                );
-                print_input_for_debug(model);
-                process::exit(0);
-            }
-        }
+    for game in model.games.iter_mut() {
+        game.update();
     }
 }
 
@@ -288,6 +193,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     const TILE_STROKE_WEIGHT: f32 = 5.0;
 
     let window = app.window(model.window_id).expect("Error finding window.");
+    let game = model.showed_game();
 
     let draw = app.draw();
     draw.background().color(BACKGROUND_COLOR);
@@ -298,9 +204,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
         for y in 0..8 {
             let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
-            let fill_color = if Some(vec2) == model.last_play_place {
+            let fill_color = if Some(vec2) == game.last_play_place {
                 MOVE_HIGHLIGHT_COLOR
-            } else if model.pos.board.get(vec2) != model.last_pos.board.get(vec2) {
+            } else if game.pos.board.get(vec2) != game.last_pos.board.get(vec2) {
                 CHANGE_HIGHLIGHT_COLOR
             } else {
                 TRANSPARENT
@@ -314,10 +220,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 .stroke(TILE_STROKE_COLOR)
                 .stroke_weight(TILE_STROKE_WEIGHT);
 
-            if model.pos.board.get(vec2) != Tile::Empty {
+            if game.pos.board.get(vec2) != Tile::Empty {
                 let circle = rect.pad(TILE_STROKE_WEIGHT);
                 draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
-                    match model.pos.board.get(vec2) {
+                    match game.pos.board.get(vec2) {
                         Tile::X => DARK_COLOR,
                         Tile::O => LIGHT_COLOR,
                         _ => panic!("Invalid tile while drawing"),
