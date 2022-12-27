@@ -288,7 +288,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                     }
                 }
 
-                println!("Score 1: {}, score 2: {}", score1, score2);
+                println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
                 process::exit(0);
             }
         }
