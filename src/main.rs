@@ -56,19 +56,24 @@ impl Model {
     }
 }
 
-fn print_help() {
+fn print_help(program_name: &str) {
     print_version_info();
 
-    println!("Input players in order as arguments. Players can be: ");
-    println!("Human: simply write 'human'");
-    println!("AI: write the path to the ai, then maximum time in milliseconds.");
+    println!("{} <mode> <mode arguments>", program_name);
     println!();
-    println!("Example: ");
-    println!(r#"PS loc> .\othello_gui.exe human ..\..\test_programs\othello_ai.exe 1000"#);
+    println!("Modes:");
     println!();
-    println!("Special commands:");
-    println!("help: displays this");
-    println!("version: displays version info");
+    println!("help: print this");
+    println!("version: print version info");
+    println!("visual <player 1> <player 2>: play a game between two players");
+    println!("compare <pairs of games> <ai 1> <ai 2>: play <pairs of games> * 2 games");
+    println!("  concurrently to compare the strength of the two ais");
+    println!();
+    println!("Mode arguments:");
+    println!();
+    println!("<player>: human | <ai>");
+    println!("<ai>: <path> <max time>");
+    println!("  <max time>: integer, in ms");
     println!();
 }
 
@@ -82,28 +87,18 @@ fn model(app: &App) -> Model {
 
     let args: Vec<String> = env::args().collect();
 
-    if args[1] == "help" || args[1] == "--help" || args[1] == "/?" || args[1] == "-?" {
-        print_help();
-        process::exit(0);
-    }
-
-    if args[1] == "version" || args[1] == "--version" || args[1] == "-v" {
-        print_version_info();
-        process::exit(0);
-    }
-
     let mut arg_iter = args.iter();
-    arg_iter.next(); // program name
+    let program_name = arg_iter.next().unwrap(); // program name
 
     let mode = arg_iter.next().unwrap_or_else(|| {
         println!("expected arguments");
-        print_help();
+        print_help(&program_name);
         process::exit(5);
     });
 
     let (games, mode) = match mode.to_lowercase().as_str() {
         "help" => {
-            print_help();
+            print_help(&program_name);
             process::exit(0);
         }
         "version" => {
@@ -141,7 +136,7 @@ fn model(app: &App) -> Model {
         }
         other => {
             eprintln!("Unknown mode '{}'", other);
-            print_help();
+            print_help(&program_name);
             process::exit(6);
         }
     };
