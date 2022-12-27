@@ -51,6 +51,7 @@ impl Model {
         &self.games[self.showed_game_idx]
     }
 
+    #[allow(unused)]
     fn showed_game_mut(&mut self) -> &mut Game {
         &mut self.games[self.showed_game_idx]
     }
