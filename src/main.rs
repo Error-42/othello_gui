@@ -78,8 +78,8 @@ fn print_help(program_name: &str) {
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.4.0 by Error-42");
-    println!("");
+    println!("Othello GUI v0.5.0 by Error-42");
+    println!();
 }
 
 fn model(app: &App) -> Model {
