@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::process::{Child, Command, ExitStatus, Stdio, self};
@@ -72,6 +73,21 @@ impl AI {
             path,
             time_limit,
             ai_run_handle: None,
+        }
+    }
+
+    pub fn try_clone(&self) -> Result<Self, Box<dyn Error>> {
+        match self.ai_run_handle {
+            None => {
+                Ok(Self {
+                    path: self.path.clone(),
+                    time_limit: self.time_limit.clone(),
+                    ai_run_handle: None,
+                })
+            }
+            Some(_) => {
+                Err("Unable to clone ran AI".into())
+            }
         }
     }
 }
@@ -175,6 +191,15 @@ impl AIRunHandle {
 pub enum Player {
     AI(AI),
     Human,
+}
+
+impl Player {
+    pub fn try_clone(&self) -> Result<Self, Box<dyn Error>> {
+        match self {
+            Player::AI(ai) => Ok(Player::AI(ai.try_clone()?)),
+            Player::Human => Ok(Player::Human),
+        }
+    }
 }
 
 pub struct Game {

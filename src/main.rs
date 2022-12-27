@@ -1,5 +1,6 @@
 use nannou::prelude::*;
 use othello_gui::*;
+use std::slice::Iter;
 use std::time::Duration;
 use std::{env, process};
 
@@ -7,10 +8,16 @@ fn main() {
     nannou::app(model).event(event).update(update).run();
 }
 
+enum Mode {
+    Visual,
+    Compare,
+}
+
 struct Model {
     window_id: window::Id,
     games: Vec<Game>,
     showed_game_idx: usize,
+    mode: Mode,
 }
 
 impl Model {
@@ -88,45 +95,108 @@ fn model(app: &App) -> Model {
     let mut arg_iter = args.iter();
     arg_iter.next(); // program name
 
-    let mut players = Vec::new();
+    let mode = arg_iter.next().unwrap_or_else(|| {
+        println!("expected arguments");
+        print_help();
+        process::exit(5);
+    });
 
-    for i in 0..2 {
-        let player_arg = arg_iter.next().unwrap_or_else(|| {
-            eprintln!("Expected {}-th player argument", i);
-            process::exit(1);
-        });
-
-        match player_arg.to_lowercase().as_str() {
-            "human" => players.push(Player::Human),
-            path => {
-                let time_limit_string = arg_iter.next().unwrap_or_else(|| {
-                    eprintln!("Expected time limit for ai ({}-th player)", i);
-                    process::exit(2);
+    let (games, mode) = match mode.to_lowercase().as_str() {
+        "help" => {
+            print_help();
+            process::exit(0);
+        }
+        "version" => {
+            print_version_info();
+            process::exit(0);
+        }
+        "visual" => {
+            let games = vec![Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)])];
+            (games, Mode::Visual)
+        }
+        "compare" => {
+            let pairs_of_games_string = arg_iter.next()
+                .unwrap_or_else(|| {
+                    eprintln!("Unexpected end of arguments, expected pairs of games");
+                    process::exit(7);
+                });
+            
+            let pairs_of_games: usize = pairs_of_games_string
+                .parse()
+                .unwrap_or_else(|_| {
+                    eprintln!("Unable to convert pairs of games to integer: '{}'", pairs_of_games_string);
+                    process::exit(8);
                 });
 
-                let time_limit =
-                    Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
-                        eprintln!(
-                            "Error converting time limit to integer: '{}'",
-                            time_limit_string
-                        );
-                        process::exit(3);
-                    }));
+            let player_a = read_ai_player(&mut arg_iter);
+            let player_b = read_ai_player(&mut arg_iter);
 
-                players.push(Player::AI(AI::new(path.into(), time_limit)));
+            let mut games = Vec::new();
+            for i in 0..pairs_of_games {
+                games.push(Game::new(i * 2, [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()]));
+                games.push(Game::new(i * 2 + 1, [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()]));
             }
+
+            (games, Mode::Compare)
         }
-    }
+        other => {
+            eprintln!("Unknown mode '{}'", other);
+            print_help();
+            process::exit(6);
+        }
+    };
 
     let mut model = Model {
         window_id,
-        games: vec![Game::new(0, players.try_into().unwrap())],
+        games,
         showed_game_idx: 0,
+        mode,
     };
 
-    model.showed_game_mut().initialize_next_player();
+    for game in model.games.iter_mut() {
+        game.initialize_next_player();
+    }
 
     model
+}
+
+fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
+    let player = read_player(arg_iter);
+
+    if let Player::Human = player {
+        eprintln!("Human player is not accepted");
+        process::exit(9);
+    }
+
+    player
+}
+
+fn read_player(arg_iter: &mut Iter<String>) -> Player {
+    let player_arg = arg_iter.next().unwrap_or_else(|| {
+        eprintln!("Unexpected end of arguments, expected player");
+        process::exit(1);
+    });
+
+    match player_arg.to_lowercase().as_str() {
+        "human" => Player::Human,
+        path => {
+            let time_limit_string = arg_iter.next().unwrap_or_else(|| {
+                eprintln!("Unexpected end of arguments, expected time limit for ai");
+                process::exit(2);
+            });
+
+            let time_limit =
+                Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
+                    eprintln!(
+                        "Error converting time limit to integer: '{}'",
+                        time_limit_string
+                    );
+                    process::exit(3);
+                }));
+
+            Player::AI(AI::new(path.into(), time_limit))
+        }
+    }
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
@@ -166,6 +236,29 @@ fn event(app: &App, model: &mut Model, event: Event) {
 fn update(_app: &App, model: &mut Model, _update: Update) {
     for game in model.games.iter_mut() {
         game.update();
+    }
+
+    match model.mode {
+        Mode::Compare => {
+            if model.games.iter().all(|game| game.pos.is_game_over()) {
+                let mut score1 = 0.0;
+                let mut score2 = 0.0;
+
+                for i in 0..model.games.len() {
+                    if i % 2 == 0 {
+                        score1 += model.games[i].pos.score_for(Tile::X);
+                        score2 += model.games[i].pos.score_for(Tile::O);
+                    } else {
+                        score1 += model.games[i].pos.score_for(Tile::O);
+                        score2 += model.games[i].pos.score_for(Tile::X);
+                    }
+                }
+
+                println!("Score 1: {}, score 2: {}", score1, score2);
+                process::exit(0);
+            }
+        }
+        _ => {}
     }
 }
 
