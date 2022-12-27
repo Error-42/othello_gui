@@ -114,6 +114,7 @@ impl AIRunHandle {
             Some(status) => self.handle_finished_child(status),
             None => {
                 if self.start.elapsed() > self.time_limit {
+                    self.child.kill().unwrap_or_default();
                     AIRunResult::TimeOut
                 } else {
                     AIRunResult::Running
