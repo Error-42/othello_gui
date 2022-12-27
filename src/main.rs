@@ -224,14 +224,15 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
                 process::exit(2);
             });
 
-            let time_limit =
-                Duration::from_millis(time_limit_string.parse().unwrap_or_else(|_| {
-                    eprintln!(
-                        "Error converting time limit to integer: '{}'",
-                        time_limit_string
-                    );
-                    process::exit(3);
-                }));
+            let time_limit_ms = time_limit_string.parse().unwrap_or_else(|_| {
+                eprintln!(
+                    "Error converting time limit to integer: '{}'",
+                    time_limit_string
+                );
+                process::exit(3);
+            });
+
+            let time_limit = Duration::from_millis(time_limit_ms);
 
             Player::AI(AI::new(path.into(), time_limit))
         }
@@ -281,23 +282,25 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         return;
     };
 
-    if model.games.iter().all(|game| game.pos.is_game_over()) {
-        let mut score1 = 0.0;
-        let mut score2 = 0.0;
-
-        for i in 0..model.games.len() {
-            if i % 2 == 0 {
-                score1 += model.games[i].pos.score_for(Tile::X);
-                score2 += model.games[i].pos.score_for(Tile::O);
-            } else {
-                score1 += model.games[i].pos.score_for(Tile::O);
-                score2 += model.games[i].pos.score_for(Tile::X);
-            }
-        }
-
-        println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
-        process::exit(0);
+    if !model.games.iter().all(|game| game.pos.is_game_over()) {
+        return;
     }
+    
+    let mut score1 = 0.0;
+    let mut score2 = 0.0;
+
+    for i in 0..model.games.len() {
+        if i % 2 == 0 {
+            score1 += model.games[i].pos.score_for(Tile::X);
+            score2 += model.games[i].pos.score_for(Tile::O);
+        } else {
+            score1 += model.games[i].pos.score_for(Tile::O);
+            score2 += model.games[i].pos.score_for(Tile::X);
+        }
+    }
+
+    println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
+    process::exit(0);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
