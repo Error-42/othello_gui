@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
-use std::process::{Child, Command, ExitStatus, Stdio, self};
+use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::time::*;
 
 pub mod othello_core;
@@ -78,16 +78,12 @@ impl AI {
 
     pub fn try_clone(&self) -> Result<Self, Box<dyn Error>> {
         match self.ai_run_handle {
-            None => {
-                Ok(Self {
-                    path: self.path.clone(),
-                    time_limit: self.time_limit.clone(),
-                    ai_run_handle: None,
-                })
-            }
-            Some(_) => {
-                Err("Unable to clone ran AI".into())
-            }
+            None => Ok(Self {
+                path: self.path.clone(),
+                time_limit: self.time_limit.clone(),
+                ai_run_handle: None,
+            }),
+            Some(_) => Err("Unable to clone ran AI".into()),
         }
     }
 }
@@ -152,7 +148,10 @@ impl AIRunHandle {
         let move_string = output[0];
 
         if move_string.len() != 2 {
-            return AIRunResult::InvalidOuput(format!("Output '{}' has invalid length", move_string));
+            return AIRunResult::InvalidOuput(format!(
+                "Output '{}' has invalid length",
+                move_string
+            ));
         }
 
         let x_char = move_string.chars().next().unwrap();
@@ -180,8 +179,7 @@ impl AIRunHandle {
 
         if output.len() == 2 {
             AIRunResult::Success(mv, Some(output[1].to_owned()))
-        }
-        else {
+        } else {
             AIRunResult::Success(mv, None)
         }
     }
@@ -233,12 +231,7 @@ impl Game {
 
     pub fn play(&mut self, mv: Vec2, notes: &str) {
         self.print_id();
-        println!(
-            "{}: {} ({})",
-            self.pos.next_player,
-            mv.move_string(),
-            notes
-        );
+        println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
         self.last_pos = self.pos;
         self.last_play_place = Some(mv);
         self.pos.play(mv);
@@ -287,11 +280,11 @@ impl Game {
         println!("Input was: ");
 
         let pos = self.pos;
-    
+
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             panic!("print_input_for_debug was not called with an ai as next player");
         };
-        
+
         println!("{}", ai.input(pos));
     }
 
@@ -299,13 +292,13 @@ impl Game {
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             return;
         };
-    
+
         let res = ai
             .ai_run_handle
             .as_mut()
             .expect("Expected an AI run handle for next player")
             .check();
-    
+
         match res {
             AIRunResult::Running => {}
             AIRunResult::InvalidOuput(err) => {

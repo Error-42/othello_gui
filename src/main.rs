@@ -112,7 +112,10 @@ fn model(app: &App) -> Model {
             process::exit(0);
         }
         "visual" => {
-            let games = vec![Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)])];
+            let games = vec![Game::new(
+                0,
+                [read_player(&mut arg_iter), read_player(&mut arg_iter)],
+            )];
             (games, Mode::Visual)
         }
         "compare" => read_compare_mode(&mut arg_iter),
@@ -138,36 +141,38 @@ fn model(app: &App) -> Model {
 }
 
 fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
-    let pairs_of_games = arg_iter.next()
-        .unwrap_or_else(|| {
-            eprintln!("Unexpected end of arguments, expected <pairs of games>");
-            process::exit(7);
-        });
+    let pairs_of_games = arg_iter.next().unwrap_or_else(|| {
+        eprintln!("Unexpected end of arguments, expected <pairs of games>");
+        process::exit(7);
+    });
 
-    let pairs_of_games: usize = pairs_of_games.parse()
-        .unwrap_or_else(|_| {
-            eprintln!("Unable to convert <pairs of games> to integer: '{}'", pairs_of_games);
-            process::exit(8);
-        });
+    let pairs_of_games: usize = pairs_of_games.parse().unwrap_or_else(|_| {
+        eprintln!(
+            "Unable to convert <pairs of games> to integer: '{}'",
+            pairs_of_games
+        );
+        process::exit(8);
+    });
 
-    let randomisation = arg_iter.next()
-        .unwrap_or_else(|| {
-            eprintln!("Unexpected end of arguments, expected <randomisation>");
-            process::exit(9);
-        });
-    
-    let randomisation: usize = randomisation.parse()
-        .unwrap_or_else(|_| {
-            eprintln!("Unable to convert <randomisation> to integer: '{}'", randomisation);
-            process::exit(10);
-        });
+    let randomisation = arg_iter.next().unwrap_or_else(|| {
+        eprintln!("Unexpected end of arguments, expected <randomisation>");
+        process::exit(9);
+    });
+
+    let randomisation: usize = randomisation.parse().unwrap_or_else(|_| {
+        eprintln!(
+            "Unable to convert <randomisation> to integer: '{}'",
+            randomisation
+        );
+        process::exit(10);
+    });
 
     let player_a = read_ai_player(arg_iter);
     let player_b = read_ai_player(arg_iter);
 
     let mut games = Vec::new();
     let mut rng = rand::thread_rng();
-    
+
     for i in 0..pairs_of_games {
         let mut pos = Pos::new();
 
@@ -241,7 +246,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
         return;
     };
 
-    // cannot use model.showed_game_mut() as that mut borrows whole model 
+    // cannot use model.showed_game_mut() as that mut borrows whole model
     let game = &mut model.games[model.showed_game_idx];
 
     let Some(Player::Human) = game.next_player() else {
