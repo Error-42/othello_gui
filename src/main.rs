@@ -1,5 +1,6 @@
 use nannou::prelude::*;
 use othello_gui::*;
+use rand::seq::SliceRandom;
 use std::slice::Iter;
 use std::time::Duration;
 use std::{env, process};
@@ -67,14 +68,18 @@ fn print_help(program_name: &str) {
     println!("help: print this");
     println!("version: print version info");
     println!("visual <player 1> <player 2>: play a game between two players");
-    println!("compare <pairs of games> <ai 1> <ai 2>: play <pairs of games> * 2 games");
-    println!("  concurrently to compare the strength of the two ais");
+    println!("compare <pairs of games> <randomisation> <ai 1> <ai 2>: play");
+    println!("  <pairs of games> * 2 games concurrently to compare the strength of");
+    println!("  the two ais; each position is played twice with swapping white and");
+    println!("  black for fairness");
     println!();
     println!("Mode arguments:");
     println!();
     println!("<player>: human | <ai>");
     println!("<ai>: <path> <max time>");
     println!("  <max time>: integer, in ms");
+    println!("<randomisation>: number of random moves at the beginning of games, so");
+    println!("  games aren't the same even with deterministic ais");
     println!();
 }
 
@@ -110,31 +115,7 @@ fn model(app: &App) -> Model {
             let games = vec![Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)])];
             (games, Mode::Visual)
         }
-        "compare" => {
-            let pairs_of_games_string = arg_iter.next()
-                .unwrap_or_else(|| {
-                    eprintln!("Unexpected end of arguments, expected pairs of games");
-                    process::exit(7);
-                });
-            
-            let pairs_of_games: usize = pairs_of_games_string
-                .parse()
-                .unwrap_or_else(|_| {
-                    eprintln!("Unable to convert pairs of games to integer: '{}'", pairs_of_games_string);
-                    process::exit(8);
-                });
-
-            let player_a = read_ai_player(&mut arg_iter);
-            let player_b = read_ai_player(&mut arg_iter);
-
-            let mut games = Vec::new();
-            for i in 0..pairs_of_games {
-                games.push(Game::new(i * 2, [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()]));
-                games.push(Game::new(i * 2 + 1, [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()]));
-            }
-
-            (games, Mode::Compare)
-        }
+        "compare" => read_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
             print_help(&program_name);
@@ -154,6 +135,63 @@ fn model(app: &App) -> Model {
     }
 
     model
+}
+
+fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
+    let pairs_of_games = arg_iter.next()
+        .unwrap_or_else(|| {
+            eprintln!("Unexpected end of arguments, expected <pairs of games>");
+            process::exit(7);
+        });
+
+    let pairs_of_games: usize = pairs_of_games.parse()
+        .unwrap_or_else(|_| {
+            eprintln!("Unable to convert <pairs of games> to integer: '{}'", pairs_of_games);
+            process::exit(8);
+        });
+
+    let randomisation = arg_iter.next()
+        .unwrap_or_else(|| {
+            eprintln!("Unexpected end of arguments, expected <randomisation>");
+            process::exit(9);
+        });
+    
+    let randomisation: usize = randomisation.parse()
+        .unwrap_or_else(|_| {
+            eprintln!("Unable to convert <randomisation> to integer: '{}'", randomisation);
+            process::exit(10);
+        });
+
+    let player_a = read_ai_player(arg_iter);
+    let player_b = read_ai_player(arg_iter);
+
+    let mut games = Vec::new();
+    let mut rng = rand::thread_rng();
+    
+    for i in 0..pairs_of_games {
+        let mut pos = Pos::new();
+
+        for _ in 0..randomisation {
+            let possibly_mv = pos.valid_moves().choose(&mut rng).map(|mv| *mv);
+
+            match possibly_mv {
+                Some(mv) => pos.play(mv),
+                None => break,
+            }
+        }
+
+        if pos.is_game_over() {
+            println!("Warning: game already ended in randomisation");
+        }
+
+        let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
+        let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
+
+        games.push(Game::from_pos(i * 2, players1, pos));
+        games.push(Game::from_pos(i * 2 + 1, players2, pos));
+    }
+
+    (games, Mode::Compare)
 }
 
 fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {

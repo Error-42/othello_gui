@@ -1418,6 +1418,7 @@ dependencies = [
  "nannou",
  "num-derive",
  "num-traits",
+ "rand 0.8.5",
  "wait-timeout",
 ]
 

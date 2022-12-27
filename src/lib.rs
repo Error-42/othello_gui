@@ -272,6 +272,16 @@ impl Game {
         }
     }
 
+    pub fn from_pos(id: usize, players: [Player; 2], pos: Pos) -> Self {
+        Self {
+            id,
+            pos,
+            last_pos: pos,
+            last_play_place: None,
+            players,
+        }
+    }
+
     pub fn print_input_for_debug(&mut self) {
         self.print_id();
         println!("Input was: ");
