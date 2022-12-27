@@ -105,6 +105,10 @@ pub struct AIRunHandle {
 }
 
 impl AIRunHandle {
+    pub fn kill(&mut self) -> io::Result<()> {
+        self.child.kill()
+    }
+
     pub fn check(&mut self) -> AIRunResult {
         match self
             .child
@@ -204,14 +208,29 @@ impl Player {
 pub struct Game {
     pub id: usize,
     pub pos: Pos,
-    pub last_pos: Pos,
-    pub last_play_place: Option<Vec2>,
+    pub history: Vec<(Pos, Option<Vec2>)>,
     pub players: [Player; 2],
 }
 
 impl Game {
     fn print_id(&self) {
         print!("#{:_>2}>> ", self.id);
+    }
+
+    pub fn prev_player(&self) -> Option<&Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&self.players[self.pos.next_player.opponent() as usize])
+        }
+    }
+
+    pub fn prev_player_mut(&mut self) -> Option<&mut Player> {
+        if self.pos.next_player == Tile::Empty {
+            None
+        } else {
+            Some(&mut self.players[self.pos.next_player.opponent() as usize])
+        }
     }
 
     pub fn next_player(&self) -> Option<&Player> {
@@ -233,9 +252,8 @@ impl Game {
     pub fn play(&mut self, mv: Vec2, notes: &str) {
         self.print_id();
         println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
-        self.last_pos = self.pos;
-        self.last_play_place = Some(mv);
         self.pos.play(mv);
+        self.history.push((self.pos, Some(mv)));
     }
 
     pub fn initialize_next_player(&mut self) {
@@ -257,21 +275,14 @@ impl Game {
     }
 
     pub fn new(id: usize, players: [Player; 2]) -> Self {
-        Self {
-            id,
-            pos: Pos::new(),
-            last_pos: Pos::new(),
-            last_play_place: None,
-            players,
-        }
+        Self::from_pos(id, players, Pos::new())
     }
 
     pub fn from_pos(id: usize, players: [Player; 2], pos: Pos) -> Self {
         Self {
             id,
             pos,
-            last_pos: pos,
-            last_play_place: None,
+            history: vec![(pos, None)],
             players,
         }
     }

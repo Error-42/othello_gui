@@ -61,6 +61,8 @@ impl Model {
 fn print_help(program_name: &str) {
     print_version_info();
 
+    println!("COMMAND LINE ARGUMENTS:");
+    println!();
     println!("{} <mode> <mode arguments>", program_name);
     println!();
     println!("Modes:");
@@ -81,10 +83,15 @@ fn print_help(program_name: &str) {
     println!("<randomisation>: number of random moves at the beginning of games, so");
     println!("  games aren't the same even with deterministic ais");
     println!();
+    println!("VISUAL PLAY:");
+    println!();
+    println!("left click: place disk");
+    println!("z: undo");
+    println!()
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.5.0 by Error-42");
+    println!("Othello GUI v0.6.0 by Error-42");
     println!();
 }
 
@@ -240,13 +247,43 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
-    let Event::WindowEvent {
-        id: _,
-        simple: Some(WindowEvent::MousePressed(MouseButton::Left)),
-    } = event else {
+    let Event::WindowEvent { id: _, simple: Some(event) } = event else {
         return;
     };
 
+    match event {
+        WindowEvent::MousePressed(MouseButton::Left) => handle_left_mouse_click(app, model),
+        WindowEvent::KeyPressed(Key::Z) => handle_undo(model),
+        _ => {},
+    }
+}
+
+fn handle_undo(model: &mut Model) {
+    let Mode::Visual = model.mode else {
+        return;
+    };
+
+    let game = model.showed_game_mut();
+
+    if let Some(Player::AI(ai)) = game.next_player_mut() {
+        if let Some(run_handle) = &mut ai.ai_run_handle {
+            run_handle.kill().unwrap_or_default();
+        }
+    }
+
+    while game.history.len() >= 2 {
+        game.history.pop();
+        game.pos = game.history.last().expect("history empty").0;
+
+        if let Some(Player::Human) = game.next_player() {
+            break;
+        }
+    }
+
+    game.initialize_next_player();
+}
+
+fn handle_left_mouse_click(app: &App, model: &mut Model) {
     // cannot use model.showed_game_mut() as that mut borrows whole model
     let game = &mut model.games[model.showed_game_idx];
 
@@ -338,9 +375,11 @@ fn view(app: &App, model: &Model, frame: Frame) {
         for y in 0..8 {
             let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
-            let fill_color = if Some(vec2) == game.last_play_place {
+            let fill_color = if Some(vec2) == game.history.last().expect("history empty").1 {
                 MOVE_HIGHLIGHT_COLOR
-            } else if game.pos.board.get(vec2) != game.last_pos.board.get(vec2) {
+            } else if game.history.len() >= 2
+                && game.pos.board.get(vec2) != game.history[game.history.len() - 2].0.board.get(vec2)
+            {
                 CHANGE_HIGHLIGHT_COLOR
             } else {
                 TRANSPARENT
