@@ -98,13 +98,13 @@ fn model(app: &App) -> Model {
 
     let mode = arg_iter.next().unwrap_or_else(|| {
         println!("expected arguments");
-        print_help(&program_name);
+        print_help(program_name);
         process::exit(5);
     });
 
     let (games, mode) = match mode.to_lowercase().as_str() {
         "help" => {
-            print_help(&program_name);
+            print_help(program_name);
             process::exit(0);
         }
         "version" => {
@@ -121,7 +121,7 @@ fn model(app: &App) -> Model {
         "compare" => read_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
-            print_help(&program_name);
+            print_help(program_name);
             process::exit(6);
         }
     };
@@ -177,7 +177,7 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
         let mut pos = Pos::new();
 
         for _ in 0..randomisation {
-            let possibly_mv = pos.valid_moves().choose(&mut rng).map(|mv| *mv);
+            let possibly_mv = pos.valid_moves().choose(&mut rng).copied();
 
             match possibly_mv {
                 Some(mv) => pos.play(mv),
@@ -277,27 +277,26 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         game.update();
     }
 
-    match model.mode {
-        Mode::Compare => {
-            if model.games.iter().all(|game| game.pos.is_game_over()) {
-                let mut score1 = 0.0;
-                let mut score2 = 0.0;
+    let Mode::Compare = model.mode else {
+        return;
+    };
 
-                for i in 0..model.games.len() {
-                    if i % 2 == 0 {
-                        score1 += model.games[i].pos.score_for(Tile::X);
-                        score2 += model.games[i].pos.score_for(Tile::O);
-                    } else {
-                        score1 += model.games[i].pos.score_for(Tile::O);
-                        score2 += model.games[i].pos.score_for(Tile::X);
-                    }
-                }
+    if model.games.iter().all(|game| game.pos.is_game_over()) {
+        let mut score1 = 0.0;
+        let mut score2 = 0.0;
 
-                println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
-                process::exit(0);
+        for i in 0..model.games.len() {
+            if i % 2 == 0 {
+                score1 += model.games[i].pos.score_for(Tile::X);
+                score2 += model.games[i].pos.score_for(Tile::O);
+            } else {
+                score1 += model.games[i].pos.score_for(Tile::O);
+                score2 += model.games[i].pos.score_for(Tile::X);
             }
         }
-        _ => {}
+
+        println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
+        process::exit(0);
     }
 }
 

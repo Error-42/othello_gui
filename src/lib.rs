@@ -80,7 +80,7 @@ impl AI {
         match self.ai_run_handle {
             None => Ok(Self {
                 path: self.path.clone(),
-                time_limit: self.time_limit.clone(),
+                time_limit: self.time_limit,
                 ai_run_handle: None,
             }),
             Some(_) => Err("Unable to clone ran AI".into()),
