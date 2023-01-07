@@ -340,7 +340,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     process::exit(0);
 }
 
-// reemplementation required, so it is a constans function
+// reimplementation required, so it is a constant function
 const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
     Rgba8 {
         color: Rgb8 {
