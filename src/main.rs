@@ -340,29 +340,29 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     process::exit(0);
 }
 
-fn view(app: &App, model: &Model, frame: Frame) {
-    // reemplementation required, so it is a constans function
-    const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
-        Rgba8 {
-            color: Rgb8 {
-                red,
-                green,
-                blue,
-                standard: std::marker::PhantomData,
-            },
-            alpha,
-        }
+// reemplementation required, so it is a constans function
+const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
+    Rgba8 {
+        color: Rgb8 {
+            red,
+            green,
+            blue,
+            standard: std::marker::PhantomData,
+        },
+        alpha,
     }
+}
 
-    const BACKGROUND_COLOR: Rgba8 = rgba8(30, 90, 60, 255);
-    const CHANGE_HIGHLIGHT_COLOR: Rgba8 = rgba8(91, 203, 215, 255);
-    const MOVE_HIGHLIGHT_COLOR: Rgba8 = rgba8(53, 103, 202, 255);
-    const TRANSPARENT: Rgba8 = rgba8(0, 0, 0, 0);
-    const TILE_STROKE_COLOR: Rgba8 = rgba8(250, 250, 230, 255);
-    const LIGHT_COLOR: Rgba8 = TILE_STROKE_COLOR;
-    const DARK_COLOR: Rgba8 = rgba8(5, 10, 15, 255);
-    const TILE_STROKE_WEIGHT: f32 = 5.0;
+const BACKGROUND_COLOR: Rgba8 = rgba8(30, 90, 60, 255);
+const CHANGE_HIGHLIGHT_COLOR: Rgba8 = rgba8(91, 203, 215, 255);
+const MOVE_HIGHLIGHT_COLOR: Rgba8 = rgba8(53, 103, 202, 255);
+const TRANSPARENT: Rgba8 = rgba8(0, 0, 0, 0);
+const TILE_STROKE_COLOR: Rgba8 = rgba8(250, 250, 230, 255);
+const LIGHT_COLOR: Rgba8 = TILE_STROKE_COLOR;
+const DARK_COLOR: Rgba8 = rgba8(5, 10, 15, 255);
+const TILE_STROKE_WEIGHT: f32 = 5.0;
 
+fn view(app: &App, model: &Model, frame: Frame) {
     let window = app.window(model.window_id).expect("Error finding window.");
     let game = model.showed_game();
 
@@ -373,40 +373,44 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     for x in 0..8 {
         for y in 0..8 {
-            let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
-
-            let fill_color = if Some(vec2) == game.history.last().expect("history empty").1 {
-                MOVE_HIGHLIGHT_COLOR
-            } else if game.history.len() >= 2
-                && game.pos.board.get(vec2) != game.history[game.history.len() - 2].0.board.get(vec2)
-            {
-                CHANGE_HIGHLIGHT_COLOR
-            } else {
-                TRANSPARENT
-            };
-
-            let rect = rects[x][y].pad(TILE_STROKE_WEIGHT / 2.0);
-            draw.rect()
-                .xy(rect.xy())
-                .wh(rect.wh())
-                .color(fill_color)
-                .stroke(TILE_STROKE_COLOR)
-                .stroke_weight(TILE_STROKE_WEIGHT);
-
-            if game.pos.board.get(vec2) != Tile::Empty {
-                let circle = rect.pad(TILE_STROKE_WEIGHT);
-                draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
-                    match game.pos.board.get(vec2) {
-                        Tile::X => DARK_COLOR,
-                        Tile::O => LIGHT_COLOR,
-                        _ => panic!("Invalid tile while drawing"),
-                    },
-                );
-            }
+            draw_tile(x, y, game, &rects, &draw);
         }
     }
 
     //draw.rect().stroke(WHITE).stroke_weight(3.0).color(Color::TRANSPARENT);
 
     draw.to_frame(app, &frame).unwrap();
+}
+
+fn draw_tile(x: usize, y: usize, game: &Game, rects: &[[Rect; 8]; 8], draw: &Draw) {
+    let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
+
+    let fill_color = if Some(vec2) == game.history.last().expect("history empty").1 {
+        MOVE_HIGHLIGHT_COLOR
+    } else if game.history.len() >= 2
+        && game.pos.board.get(vec2) != game.history[game.history.len() - 2].0.board.get(vec2)
+    {
+        CHANGE_HIGHLIGHT_COLOR
+    } else {
+        TRANSPARENT
+    };
+
+    let rect = rects[x][y].pad(TILE_STROKE_WEIGHT / 2.0);
+    draw.rect()
+        .xy(rect.xy())
+        .wh(rect.wh())
+        .color(fill_color)
+        .stroke(TILE_STROKE_COLOR)
+        .stroke_weight(TILE_STROKE_WEIGHT);
+
+    if game.pos.board.get(vec2) != Tile::Empty {
+        let circle = rect.pad(TILE_STROKE_WEIGHT);
+        draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
+            match game.pos.board.get(vec2) {
+                Tile::X => DARK_COLOR,
+                Tile::O => LIGHT_COLOR,
+                _ => panic!("Invalid tile while drawing"),
+            },
+        );
+    }
 }
