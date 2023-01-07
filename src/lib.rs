@@ -51,6 +51,7 @@ impl AI {
             .arg(self.path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()?;
 
         let stdin = child.stdin.as_mut().unwrap();
@@ -91,7 +92,7 @@ impl AI {
 pub enum AIRunResult {
     Running,
     TimeOut,
-    RuntimeError(ExitStatus),
+    RuntimeError { status: ExitStatus, stderr: String },
     InvalidOuput(String),
     // move, { notes, if provided }
     Success(Vec2, Option<String>),
@@ -129,7 +130,16 @@ impl AIRunHandle {
 
     fn handle_finished_child(&mut self, status: ExitStatus) -> AIRunResult {
         if !status.success() {
-            return AIRunResult::RuntimeError(status);
+            let mut stderr = String::new();
+
+            self.child
+                .stderr
+                .as_mut()
+                .expect("Error getting stderr of program")
+                .read_to_string(&mut stderr)
+                .expect("Error reading stderr of program");
+
+            return AIRunResult::RuntimeError{ status, stderr };
         }
 
         let mut output = String::new();
@@ -319,13 +329,15 @@ impl Game {
                 self.print_input_for_debug();
                 process::exit(0);
             }
-            AIRunResult::RuntimeError(status) => {
+            AIRunResult::RuntimeError{ status, stderr } => {
                 self.print_id();
                 println!(
                     "AI {} program exit code was non-zero: {}",
                     self.pos.next_player,
                     status.code().unwrap(),
                 );
+                println!("stderr of AI program:");
+                println!("{stderr}");
                 self.print_input_for_debug();
                 process::exit(0);
             }
