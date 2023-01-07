@@ -139,7 +139,7 @@ impl AIRunHandle {
                 .read_to_string(&mut stderr)
                 .expect("Error reading stderr of program");
 
-            return AIRunResult::RuntimeError{ status, stderr };
+            return AIRunResult::RuntimeError { status, stderr };
         }
 
         let mut output = String::new();
@@ -329,7 +329,7 @@ impl Game {
                 self.print_input_for_debug();
                 process::exit(0);
             }
-            AIRunResult::RuntimeError{ status, stderr } => {
+            AIRunResult::RuntimeError { status, stderr } => {
                 self.print_id();
                 println!(
                     "AI {} program exit code was non-zero: {}",

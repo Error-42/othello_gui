@@ -219,7 +219,8 @@ fn read_int<T: FromStr>(arg_iter: &mut Iter<String>, what: &str) -> T {
 }
 
 fn read_string(arg_iter: &mut Iter<String>, what: &str) -> String {
-    arg_iter.next()
+    arg_iter
+        .next()
         .unwrap_or_else(|| {
             eprintln!("Unexpected end of arguemtns, expected {what}");
             process::exit(11);
@@ -235,7 +236,7 @@ fn event(app: &App, model: &mut Model, event: Event) {
     match event {
         WindowEvent::MousePressed(MouseButton::Left) => handle_left_mouse_click(app, model),
         WindowEvent::KeyPressed(Key::Z) => handle_undo(model),
-        _ => {},
+        _ => {}
     }
 }
 
@@ -303,7 +304,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     if !model.games.iter().all(|game| game.pos.is_game_over()) {
         return;
     }
-    
+
     let mut score1 = 0.0;
     let mut score2 = 0.0;
 
@@ -386,12 +387,13 @@ fn draw_tile(x: usize, y: usize, game: &Game, rects: &[[Rect; 8]; 8], draw: &Dra
 
     if game.pos.board.get(vec2) != Tile::Empty {
         let circle = rect.pad(TILE_STROKE_WEIGHT);
-        draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
-            match game.pos.board.get(vec2) {
+        draw.ellipse()
+            .xy(circle.xy())
+            .wh(circle.wh())
+            .color(match game.pos.board.get(vec2) {
                 Tile::X => DARK_COLOR,
                 Tile::O => LIGHT_COLOR,
                 _ => panic!("Invalid tile while drawing"),
-            },
-        );
+            });
     }
 }
