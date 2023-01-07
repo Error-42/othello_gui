@@ -2,6 +2,7 @@ use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::SliceRandom;
 use std::slice::Iter;
+use std::str::FromStr;
 use std::time::Duration;
 use std::{env, process};
 
@@ -148,31 +149,8 @@ fn model(app: &App) -> Model {
 }
 
 fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
-    let pairs_of_games = arg_iter.next().unwrap_or_else(|| {
-        eprintln!("Unexpected end of arguments, expected <pairs of games>");
-        process::exit(7);
-    });
-
-    let pairs_of_games: usize = pairs_of_games.parse().unwrap_or_else(|_| {
-        eprintln!(
-            "Unable to convert <pairs of games> to integer: '{}'",
-            pairs_of_games
-        );
-        process::exit(8);
-    });
-
-    let randomisation = arg_iter.next().unwrap_or_else(|| {
-        eprintln!("Unexpected end of arguments, expected <randomisation>");
-        process::exit(9);
-    });
-
-    let randomisation: usize = randomisation.parse().unwrap_or_else(|_| {
-        eprintln!(
-            "Unable to convert <randomisation> to integer: '{}'",
-            randomisation
-        );
-        process::exit(10);
-    });
+    let pairs_of_games = read_int(arg_iter, "<pairs of games>");
+    let randomisation = read_int(arg_iter, "<randomisation>");
 
     let player_a = read_ai_player(arg_iter);
     let player_b = read_ai_player(arg_iter);
@@ -218,32 +196,35 @@ fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
 }
 
 fn read_player(arg_iter: &mut Iter<String>) -> Player {
-    let player_arg = arg_iter.next().unwrap_or_else(|| {
-        eprintln!("Unexpected end of arguments, expected player");
-        process::exit(1);
-    });
+    let player_arg = read_string(arg_iter, "<player>");
 
     match player_arg.to_lowercase().as_str() {
         "human" => Player::Human,
         path => {
-            let time_limit_string = arg_iter.next().unwrap_or_else(|| {
-                eprintln!("Unexpected end of arguments, expected time limit for ai");
-                process::exit(2);
-            });
-
-            let time_limit_ms = time_limit_string.parse().unwrap_or_else(|_| {
-                eprintln!(
-                    "Error converting time limit to integer: '{}'",
-                    time_limit_string
-                );
-                process::exit(3);
-            });
-
+            let time_limit_ms = read_int(arg_iter, "<max time>");
             let time_limit = Duration::from_millis(time_limit_ms);
 
             Player::AI(AI::new(path.into(), time_limit))
         }
     }
+}
+
+fn read_int<T: FromStr>(arg_iter: &mut Iter<String>, what: &str) -> T {
+    let arg = read_string(arg_iter, what);
+
+    arg.parse().unwrap_or_else(|_| {
+        eprintln!("Error converting {what} to integer, which is '{arg}'");
+        process::exit(12);
+    })
+}
+
+fn read_string(arg_iter: &mut Iter<String>, what: &str) -> String {
+    arg_iter.next()
+        .unwrap_or_else(|| {
+            eprintln!("Unexpected end of arguemtns, expected {what}");
+            process::exit(11);
+        })
+        .clone()
 }
 
 fn event(app: &App, model: &mut Model, event: Event) {
