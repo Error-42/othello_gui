@@ -8,6 +8,5 @@ edition = "2021"
 [dependencies]
 wait-timeout = "0.2.0"
 nannou = "0.18.1"
-num-derive = "0.3.0"
-num-traits = "0.2.0"
 rand = "0.8.5"
+othello_core_lib = { git = "https://github.com/Error-42/othello_core_lib.git" }

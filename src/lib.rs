@@ -4,9 +4,7 @@ use std::io::{self, Read, Write};
 use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::time::*;
 
-pub mod othello_core;
-
-pub use othello_core::othello::*;
+pub use othello_core_lib::*;
 // use run::*;
 
 #[derive(Debug)]

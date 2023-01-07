@@ -1,3 +1,0 @@
-[submodule "othello_core"]
-	path = src/othello_core
-	url = https://github.com/Error-42/othello_core.git
