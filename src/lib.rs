@@ -221,6 +221,9 @@ pub struct Game {
 }
 
 impl Game {
+    // TODO: contains macros with side-effects (println!).
+    // Maybe rewrite it, so there are no side-effects?
+
     fn print_id(&self) {
         print!("#{:_>2}>> ", self.id);
     }
