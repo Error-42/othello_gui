@@ -92,7 +92,7 @@ fn print_help(program_name: &str) {
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.7.0 by Error-42");
+    println!("Othello GUI v0.9.0 by Error-42");
     println!();
 }
 
