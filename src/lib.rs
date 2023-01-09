@@ -365,4 +365,26 @@ impl Game {
             }
         }
     }
+
+    pub fn undo(&mut self) {
+        if let Some(Player::AI(ai)) = self.next_player_mut() {
+            if let Some(run_handle) = &mut ai.ai_run_handle {
+                run_handle.kill().unwrap_or_default();
+            }
+        }
+
+        while self.history.len() >= 2 {
+            self.history.pop();
+            self.print_id();
+            println!("Undid move");
+            
+            self.pos = self.history.last().expect("history empty").0;
+
+            if let Some(Player::Human) = self.next_player() {
+                break;
+            }
+        }
+
+        self.initialize_next_player();
+    } 
 }

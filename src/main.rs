@@ -245,24 +245,7 @@ fn handle_undo(model: &mut Model) {
         return;
     };
 
-    let game = model.showed_game_mut();
-
-    if let Some(Player::AI(ai)) = game.next_player_mut() {
-        if let Some(run_handle) = &mut ai.ai_run_handle {
-            run_handle.kill().unwrap_or_default();
-        }
-    }
-
-    while game.history.len() >= 2 {
-        game.history.pop();
-        game.pos = game.history.last().expect("history empty").0;
-
-        if let Some(Player::Human) = game.next_player() {
-            break;
-        }
-    }
-
-    game.initialize_next_player();
+    model.showed_game_mut().undo();
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
