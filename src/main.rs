@@ -10,11 +10,20 @@ fn main() {
     nannou::app(model).event(event).update(update).run();
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Mode {
     Visual,
     Compare,
+    FullCompare(FullCompareData),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct FullCompareData {
+    first_unstarted: usize,
+    max_concurrency: usize,
+}
+
+#[derive(Debug)]
 struct Model {
     window_id: window::Id,
     games: Vec<Game>,
@@ -120,13 +129,16 @@ fn model(app: &App) -> Model {
             process::exit(0);
         }
         "visual" => {
-            let games = vec![Game::new(
-                0,
-                [read_player(&mut arg_iter), read_player(&mut arg_iter)],
-            )];
+            let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
+
+            game.initialize_next_player();
+
+            let games = vec![game];
+
             (games, Mode::Visual)
         }
         "compare" => read_compare_mode(&mut arg_iter),
+        "full-compare" => handle_full_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
             print_help(program_name);
@@ -134,22 +146,16 @@ fn model(app: &App) -> Model {
         }
     };
 
-    let mut model = Model {
+    Model {
         window_id,
         games,
         showed_game_idx: 0,
         mode,
-    };
-
-    for game in model.games.iter_mut() {
-        game.initialize_next_player();
     }
-
-    model
 }
 
 fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
-    let pairs_of_games = read_int(arg_iter, "<pairs of games>");
+    let max_concurrency = read_int(arg_iter, "<pairs of games>");
     let randomisation = read_int(arg_iter, "<randomisation>");
 
     let player_a = read_ai_player(arg_iter);
@@ -158,7 +164,7 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
     let mut games = Vec::new();
     let mut rng = rand::thread_rng();
 
-    for i in 0..pairs_of_games {
+    for i in 0..max_concurrency {
         let mut pos = Pos::new();
 
         for _ in 0..randomisation {
@@ -181,7 +187,39 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
         games.push(Game::from_pos(i * 2 + 1, players2, pos));
     }
 
+    for game in games.iter_mut() {
+        game.initialize_next_player();
+    }
+
     (games, Mode::Compare)
+}
+
+fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
+    let max_concurrency = read_int(arg_iter, "<max concurrency>");
+    let depth = read_int(arg_iter, "<depth>");
+
+    let player_a = read_ai_player(arg_iter);
+    let player_b = read_ai_player(arg_iter);
+
+    let mut games = Vec::new();
+
+    let starts = Pos::new().tree_end(depth);
+
+    for (i, &start) in starts.iter().enumerate() {
+        let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
+        let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
+
+        games.push(Game::from_pos(i * 2, players1, start));
+        games.push(Game::from_pos(i * 2 + 1, players2, start));
+    }
+
+    (
+        games,
+        Mode::FullCompare(FullCompareData {
+            first_unstarted: 0,
+            max_concurrency,
+        }),
+    )
 }
 
 fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
@@ -210,10 +248,12 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
 }
 
 fn read_int<T: FromStr>(arg_iter: &mut Iter<String>, what: &str) -> T {
-    let arg = read_string(arg_iter, what);
+    handled_parse(read_string(arg_iter, what).as_str(), what)
+}
 
-    arg.parse().unwrap_or_else(|_| {
-        eprintln!("Error converting {what} to integer, which is '{arg}'");
+fn handled_parse<T: FromStr>(str: &str, what: &str) -> T {
+    str.parse().unwrap_or_else(|_| {
+        eprintln!("Error converting {what} to integer, which is '{str}'");
         process::exit(12);
     })
 }
@@ -276,6 +316,18 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
+    match model.mode {
+        Mode::Visual => {
+            for game in model.games.iter_mut() {
+                game.update();
+            }
+        }
+        Mode::Compare => update_compare(model),
+        Mode::FullCompare(_) => update_full_compare(model),
+    }
+}
+
+fn update_compare(model: &mut Model) {
     for game in model.games.iter_mut() {
         game.update();
     }
@@ -303,6 +355,57 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
 
     println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
     process::exit(0);
+}
+
+fn update_full_compare(model: &mut Model) {
+    // TODO: Oh no! If an ai crashes the game is over, however
+    // game.pos.is_game_over() will return false, since there are valid moves.  
+
+    let Mode::FullCompare(data) = &mut model.mode else {
+        panic!("update_full_compare was called with mode {:?}", model.mode);
+    };
+
+    let ongoing = model
+        .games[..data.first_unstarted]
+        .iter()
+        .filter(|&game| !game.pos.is_game_over())
+        .count();
+    let can_start = data.max_concurrency - ongoing;
+
+    let model_games_len = model.games.len();
+    for game in model.games
+        [data.first_unstarted..(data.first_unstarted + can_start).min(model_games_len)]
+        .iter_mut()
+    {
+        game.initialize();
+        data.first_unstarted += 1;
+    }
+
+    if model.games[model.showed_game_idx].pos.is_game_over() {
+        model.showed_game_idx = data.first_unstarted - 1;   
+    }
+
+    for game in model.games[..data.first_unstarted].iter_mut() {
+        game.update();
+    }
+
+    if model.games.iter().all(|game| game.pos.is_game_over()) {
+        let mut score1 = 0.0;
+        let mut score2 = 0.0;
+    
+        for i in 0..model.games.len() {
+            if i % 2 == 0 {
+                score1 += model.games[i].pos.score_for(Tile::X);
+                score2 += model.games[i].pos.score_for(Tile::O);
+            } else {
+                score1 += model.games[i].pos.score_for(Tile::O);
+                score2 += model.games[i].pos.score_for(Tile::X);
+            }
+        }
+    
+        println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
+        process::exit(0);
+    }
 }
 
 // reimplementation required, so it is a constant function

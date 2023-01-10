@@ -1414,7 +1414,7 @@ dependencies = [
 [[package]]
 name = "othello_core_lib"
 version = "0.1.0"
-source = "git+https://github.com/Error-42/othello_core_lib.git#5315001afdc3d4abd26d9a25e47b25af3532bbdc"
+source = "git+https://github.com/Error-42/othello_core_lib.git#1a7715ec42b5a5de269add2f8c4bc23b7cc6bab2"
 dependencies = [
  "num-derive",
  "num-traits",

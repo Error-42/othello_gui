@@ -213,6 +213,7 @@ impl Player {
     }
 }
 
+#[derive(Debug)]
 pub struct Game {
     pub id: usize,
     pub pos: Pos,
@@ -225,7 +226,7 @@ impl Game {
     // Maybe rewrite it, so there are no side-effects?
 
     fn print_id(&self) {
-        print!("#{:_>2}>> ", self.id);
+        print!("#{:_>3}> ", self.id);
     }
 
     pub fn prev_player(&self) -> Option<&Player> {
@@ -265,6 +266,13 @@ impl Game {
         println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
         self.pos.play(mv);
         self.history.push((self.pos, Some(mv)));
+    }
+
+    pub fn initialize(&mut self) {
+        self.print_id();
+        println!("Game started");
+
+        self.initialize_next_player();
     }
 
     pub fn initialize_next_player(&mut self) {
@@ -377,7 +385,7 @@ impl Game {
             self.history.pop();
             self.print_id();
             println!("Undid move");
-            
+
             self.pos = self.history.last().expect("history empty").0;
 
             if let Some(Player::Human) = self.next_player() {
@@ -386,5 +394,5 @@ impl Game {
         }
 
         self.initialize_next_player();
-    } 
+    }
 }
