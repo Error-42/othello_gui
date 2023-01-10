@@ -196,7 +196,16 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
 
 fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
     let max_concurrency = read_int(arg_iter, "<max concurrency>");
+    if max_concurrency == 0 {
+        eprintln!("max_concurrency must be at least 1");
+        process::exit(14);
+    }
+
     let depth = read_int(arg_iter, "<depth>");
+    if depth > 5 {
+        eprintln!("depth can be at most 5");
+        process::exit(13);
+    }
 
     let player_a = read_ai_player(arg_iter);
     let player_b = read_ai_player(arg_iter);
