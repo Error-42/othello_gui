@@ -249,6 +249,12 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
         "human" => Player::Human,
         path => {
             let time_limit_ms = read_int(arg_iter, "<max time>");
+
+            if time_limit_ms == 0 {
+                eprintln!("<max time> must be positive");
+                process::exit(14);
+            }
+
             let time_limit = Duration::from_millis(time_limit_ms);
 
             Player::AI(AI::new(path.into(), time_limit))
