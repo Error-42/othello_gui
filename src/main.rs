@@ -14,13 +14,7 @@ fn main() {
 enum Mode {
     Visual,
     Compare,
-    FullCompare(FullCompareData),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct FullCompareData {
-    first_unstarted: usize,
-    max_concurrency: usize,
+    FullCompare,
 }
 
 #[derive(Debug)]
@@ -29,6 +23,8 @@ struct Model {
     games: Vec<Game>,
     showed_game_idx: usize,
     mode: Mode,
+    first_unstarted: usize,
+    max_concurrency: usize,
 }
 
 impl Model {
@@ -66,6 +62,12 @@ impl Model {
     fn showed_game_mut(&mut self) -> &mut Game {
         &mut self.games[self.showed_game_idx]
     }
+}
+
+struct StartData {
+    games: Vec<Game>,
+    mode: Mode,
+    max_concurrency: usize,
 }
 
 fn print_help(program_name: &str) {
@@ -119,7 +121,7 @@ fn model(app: &App) -> Model {
         process::exit(5);
     });
 
-    let (games, mode) = match mode.to_lowercase().as_str() {
+    let start_data = match mode.to_lowercase().as_str() {
         "help" => {
             print_help(program_name);
             process::exit(0);
@@ -135,7 +137,11 @@ fn model(app: &App) -> Model {
 
             let games = vec![game];
 
-            (games, Mode::Visual)
+            StartData {
+                games,
+                mode: Mode::Visual,
+                max_concurrency: 1,
+            }
         }
         "compare" => read_compare_mode(&mut arg_iter),
         "full-compare" => handle_full_compare_mode(&mut arg_iter),
@@ -148,13 +154,15 @@ fn model(app: &App) -> Model {
 
     Model {
         window_id,
-        games,
+        games: start_data.games,
         showed_game_idx: 0,
-        mode,
+        mode: start_data.mode,
+        first_unstarted: 0,
+        max_concurrency: start_data.max_concurrency,
     }
 }
 
-fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
+fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     let max_concurrency = read_int(arg_iter, "<pairs of games>");
     let randomisation = read_int(arg_iter, "<randomisation>");
 
@@ -191,10 +199,14 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
         game.initialize_next_player();
     }
 
-    (games, Mode::Compare)
+    StartData {
+        games,
+        mode: Mode::Compare,
+        max_concurrency,
+    }
 }
 
-fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
+fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     let max_concurrency = read_int(arg_iter, "<max concurrency>");
     if max_concurrency == 0 {
         eprintln!("max_concurrency must be at least 1");
@@ -222,13 +234,12 @@ fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    (
+    
+    StartData {
         games,
-        Mode::FullCompare(FullCompareData {
-            first_unstarted: 0,
-            max_concurrency,
-        }),
-    )
+        mode: Mode::FullCompare,
+        max_concurrency,
+    }
 }
 
 fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
@@ -331,30 +342,42 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    match model.mode {
-        Mode::Visual => {
-            for game in model.games.iter_mut() {
-                game.update();
-            }
-        }
-        Mode::Compare => update_compare(model),
-        Mode::FullCompare(_) => update_full_compare(model),
-    }
-}
+    // TODO: Oh no! If an ai crashes the game is over, however
+    // game.pos.is_game_over() will return false, since there are valid moves.  
 
-fn update_compare(model: &mut Model) {
-    for game in model.games.iter_mut() {
+    let ongoing = model
+        .games[..model.first_unstarted]
+        .iter()
+        .filter(|&game| !game.pos.is_game_over())
+        .count();
+    let can_start = model.max_concurrency - ongoing;
+
+    let model_games_len = model.games.len();
+    for game in model.games
+        [model.first_unstarted..(model.first_unstarted + can_start).min(model_games_len)]
+        .iter_mut()
+    {
+        game.initialize();
+        model.first_unstarted += 1;
+    }
+
+    if model.games[model.showed_game_idx].pos.is_game_over() {
+        model.showed_game_idx = model.first_unstarted - 1;   
+    }
+
+    for game in model.games[..model.first_unstarted].iter_mut() {
         game.update();
     }
 
-    let Mode::Compare = model.mode else {
-        return;
-    };
-
-    if !model.games.iter().all(|game| game.pos.is_game_over()) {
-        return;
+    if let Mode::Compare | Mode::FullCompare = model.mode {
+        if model.games.iter().all(|game| game.pos.is_game_over()) {
+            score(model);
+            process::exit(0);
+        }
     }
+}
 
+fn score(model: &mut Model) {
     let mut score1 = 0.0;
     let mut score2 = 0.0;
 
@@ -370,57 +393,6 @@ fn update_compare(model: &mut Model) {
 
     println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
     process::exit(0);
-}
-
-fn update_full_compare(model: &mut Model) {
-    // TODO: Oh no! If an ai crashes the game is over, however
-    // game.pos.is_game_over() will return false, since there are valid moves.  
-
-    let Mode::FullCompare(data) = &mut model.mode else {
-        panic!("update_full_compare was called with mode {:?}", model.mode);
-    };
-
-    let ongoing = model
-        .games[..data.first_unstarted]
-        .iter()
-        .filter(|&game| !game.pos.is_game_over())
-        .count();
-    let can_start = data.max_concurrency - ongoing;
-
-    let model_games_len = model.games.len();
-    for game in model.games
-        [data.first_unstarted..(data.first_unstarted + can_start).min(model_games_len)]
-        .iter_mut()
-    {
-        game.initialize();
-        data.first_unstarted += 1;
-    }
-
-    if model.games[model.showed_game_idx].pos.is_game_over() {
-        model.showed_game_idx = data.first_unstarted - 1;   
-    }
-
-    for game in model.games[..data.first_unstarted].iter_mut() {
-        game.update();
-    }
-
-    if model.games.iter().all(|game| game.pos.is_game_over()) {
-        let mut score1 = 0.0;
-        let mut score2 = 0.0;
-    
-        for i in 0..model.games.len() {
-            if i % 2 == 0 {
-                score1 += model.games[i].pos.score_for(Tile::X);
-                score2 += model.games[i].pos.score_for(Tile::O);
-            } else {
-                score1 += model.games[i].pos.score_for(Tile::O);
-                score2 += model.games[i].pos.score_for(Tile::X);
-            }
-        }
-    
-        println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
-        process::exit(0);
-    }
 }
 
 // reimplementation required, so it is a constant function
