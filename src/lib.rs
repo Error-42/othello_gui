@@ -213,6 +213,7 @@ impl Player {
     }
 }
 
+#[derive(Debug)]
 pub struct Game {
     pub id: usize,
     pub pos: Pos,
@@ -221,8 +222,11 @@ pub struct Game {
 }
 
 impl Game {
+    // TODO: contains macros with side-effects (println!).
+    // Maybe rewrite it, so there are no side-effects?
+
     fn print_id(&self) {
-        print!("#{:_>2}>> ", self.id);
+        print!("#{:_>3}> ", self.id);
     }
 
     pub fn prev_player(&self) -> Option<&Player> {
@@ -262,6 +266,13 @@ impl Game {
         println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
         self.pos.play(mv);
         self.history.push((self.pos, Some(mv)));
+    }
+
+    pub fn initialize(&mut self) {
+        self.print_id();
+        println!("Game started");
+
+        self.initialize_next_player();
     }
 
     pub fn initialize_next_player(&mut self) {
@@ -361,5 +372,27 @@ impl Game {
                 }
             }
         }
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(Player::AI(ai)) = self.next_player_mut() {
+            if let Some(run_handle) = &mut ai.ai_run_handle {
+                run_handle.kill().unwrap_or_default();
+            }
+        }
+
+        while self.history.len() >= 2 {
+            self.history.pop();
+            self.print_id();
+            println!("Undid move");
+
+            self.pos = self.history.last().expect("history empty").0;
+
+            if let Some(Player::Human) = self.next_player() {
+                break;
+            }
+        }
+
+        self.initialize_next_player();
     }
 }

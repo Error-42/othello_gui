@@ -1,6 +1,6 @@
 use nannou::prelude::*;
 use othello_gui::*;
-use rand::seq::SliceRandom;
+use rand::seq::IteratorRandom;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::time::Duration;
@@ -10,16 +10,21 @@ fn main() {
     nannou::app(model).event(event).update(update).run();
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Mode {
     Visual,
     Compare,
+    FullCompare,
 }
 
+#[derive(Debug)]
 struct Model {
     window_id: window::Id,
     games: Vec<Game>,
     showed_game_idx: usize,
     mode: Mode,
+    first_unstarted: usize,
+    max_concurrency: usize,
 }
 
 impl Model {
@@ -59,6 +64,12 @@ impl Model {
     }
 }
 
+struct StartData {
+    games: Vec<Game>,
+    mode: Mode,
+    max_concurrency: usize,
+}
+
 fn print_help(program_name: &str) {
     print_version_info();
 
@@ -92,7 +103,7 @@ fn print_help(program_name: &str) {
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.7.0 by Error-42");
+    println!("Othello GUI v0.9.0 by Error-42");
     println!();
 }
 
@@ -110,7 +121,7 @@ fn model(app: &App) -> Model {
         process::exit(5);
     });
 
-    let (games, mode) = match mode.to_lowercase().as_str() {
+    let start_data = match mode.to_lowercase().as_str() {
         "help" => {
             print_help(program_name);
             process::exit(0);
@@ -120,13 +131,20 @@ fn model(app: &App) -> Model {
             process::exit(0);
         }
         "visual" => {
-            let games = vec![Game::new(
-                0,
-                [read_player(&mut arg_iter), read_player(&mut arg_iter)],
-            )];
-            (games, Mode::Visual)
+            let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
+
+            game.initialize_next_player();
+
+            let games = vec![game];
+
+            StartData {
+                games,
+                mode: Mode::Visual,
+                max_concurrency: 1,
+            }
         }
         "compare" => read_compare_mode(&mut arg_iter),
+        "full-compare" => handle_full_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
             print_help(program_name);
@@ -134,54 +152,117 @@ fn model(app: &App) -> Model {
         }
     };
 
-    let mut model = Model {
+    Model {
         window_id,
-        games,
+        games: start_data.games,
         showed_game_idx: 0,
-        mode,
-    };
-
-    for game in model.games.iter_mut() {
-        game.initialize_next_player();
+        mode: start_data.mode,
+        first_unstarted: 0,
+        max_concurrency: start_data.max_concurrency,
     }
-
-    model
 }
 
-fn read_compare_mode(arg_iter: &mut Iter<String>) -> (Vec<Game>, Mode) {
-    let pairs_of_games = read_int(arg_iter, "<pairs of games>");
-    let randomisation = read_int(arg_iter, "<randomisation>");
+enum GameAmountMode {
+    All,
+    Some(usize),
+}
+
+fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {    
+    // TODO: handle depth = 0
+
+    let depth: usize = read_int(arg_iter, "<depth>");
+    if depth > 5 {
+        eprintln!("depth can be at most 5");
+        process::exit(13);
+    }    
+
+    let pairs_of_games = read_string(arg_iter, "<game amount>");
+    let game_amount_mode = match pairs_of_games.as_str() {
+        "a" | "all" => GameAmountMode::All,
+        num => GameAmountMode::Some(handled_parse(num, "<game amount> (which isn't 'all')")),
+    };
+
+    let max_concurrency = read_int(arg_iter, "<max concurrency>");
+    if max_concurrency == 0 {
+        eprintln!("max_concurrency must be at least 1");
+        process::exit(14);
+    }
 
     let player_a = read_ai_player(arg_iter);
     let player_b = read_ai_player(arg_iter);
 
     let mut games = Vec::new();
-    let mut rng = rand::thread_rng();
 
-    for i in 0..pairs_of_games {
-        let mut pos = Pos::new();
+    let possible_starts = Pos::new().play_clone(othello_gui::Vec2::new(3, 4)).tree_end(depth - 1);
 
-        for _ in 0..randomisation {
-            let possibly_mv = pos.valid_moves().choose(&mut rng).copied();
-
-            match possibly_mv {
-                Some(mv) => pos.play(mv),
-                None => break,
+    let starts = match game_amount_mode {
+        GameAmountMode::All => possible_starts,
+        GameAmountMode::Some(mut pairs_of_games) => {
+            if pairs_of_games > possible_starts.len() {
+                println!("Warning: specified pairs of games is higher than possible game starts");
+                pairs_of_games = possible_starts.len();
             }
-        }
 
-        if pos.is_game_over() {
-            println!("Warning: game already ended in randomisation");
+            let mut rng = rand::thread_rng();
+
+            possible_starts.into_iter().choose_multiple(&mut rng, pairs_of_games)
         }
+    };
+
+    for (i, &start) in starts.iter().enumerate() {
 
         let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
         let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
 
-        games.push(Game::from_pos(i * 2, players1, pos));
-        games.push(Game::from_pos(i * 2 + 1, players2, pos));
+        games.push(Game::from_pos(i * 2, players1, start));
+        games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    (games, Mode::Compare)
+    for game in games.iter_mut() {
+        game.initialize_next_player();
+    }
+
+    StartData {
+        games,
+        mode: Mode::Compare,
+        max_concurrency,
+    }
+}
+
+fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
+    let max_concurrency = read_int(arg_iter, "<max concurrency>");
+    if max_concurrency == 0 {
+        eprintln!("max_concurrency must be at least 1");
+        process::exit(14);
+    }
+
+    let depth = read_int(arg_iter, "<depth>");
+    if depth > 5 {
+        eprintln!("depth can be at most 5");
+        process::exit(13);
+    }
+
+    let player_a = read_ai_player(arg_iter);
+    let player_b = read_ai_player(arg_iter);
+
+    let mut games = Vec::new();
+
+    let starts = Pos::new().tree_end(depth);
+
+    for (i, &start) in starts.iter().enumerate() {
+        let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
+        let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
+
+        games.push(Game::from_pos(i * 2, players1, start));
+        games.push(Game::from_pos(i * 2 + 1, players2, start));
+    }
+
+    
+    StartData {
+        games,
+        mode: Mode::FullCompare,
+        max_concurrency,
+    }
 }
 
 fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
@@ -202,6 +283,12 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
         "human" => Player::Human,
         path => {
             let time_limit_ms = read_int(arg_iter, "<max time>");
+
+            if time_limit_ms == 0 {
+                eprintln!("<max time> must be positive");
+                process::exit(14);
+            }
+
             let time_limit = Duration::from_millis(time_limit_ms);
 
             Player::AI(AI::new(path.into(), time_limit))
@@ -210,10 +297,12 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
 }
 
 fn read_int<T: FromStr>(arg_iter: &mut Iter<String>, what: &str) -> T {
-    let arg = read_string(arg_iter, what);
+    handled_parse(read_string(arg_iter, what).as_str(), what)
+}
 
-    arg.parse().unwrap_or_else(|_| {
-        eprintln!("Error converting {what} to integer, which is '{arg}'");
+fn handled_parse<T: FromStr>(str: &str, what: &str) -> T {
+    str.parse().unwrap_or_else(|_| {
+        eprintln!("Error converting {what} to integer, which is '{str}'");
         process::exit(12);
     })
 }
@@ -245,24 +334,7 @@ fn handle_undo(model: &mut Model) {
         return;
     };
 
-    let game = model.showed_game_mut();
-
-    if let Some(Player::AI(ai)) = game.next_player_mut() {
-        if let Some(run_handle) = &mut ai.ai_run_handle {
-            run_handle.kill().unwrap_or_default();
-        }
-    }
-
-    while game.history.len() >= 2 {
-        game.history.pop();
-        game.pos = game.history.last().expect("history empty").0;
-
-        if let Some(Player::Human) = game.next_player() {
-            break;
-        }
-    }
-
-    game.initialize_next_player();
+    model.showed_game_mut().undo();
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
@@ -293,18 +365,42 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    for game in model.games.iter_mut() {
+    // TODO: Oh no! If an ai crashes the game is over, however
+    // game.pos.is_game_over() will return false, since there are valid moves.  
+
+    let ongoing = model
+        .games[..model.first_unstarted]
+        .iter()
+        .filter(|&game| !game.pos.is_game_over())
+        .count();
+    let can_start = model.max_concurrency - ongoing;
+
+    let model_games_len = model.games.len();
+    for game in model.games
+        [model.first_unstarted..(model.first_unstarted + can_start).min(model_games_len)]
+        .iter_mut()
+    {
+        game.initialize();
+        model.first_unstarted += 1;
+    }
+
+    if model.games[model.showed_game_idx].pos.is_game_over() {
+        model.showed_game_idx = model.first_unstarted - 1;   
+    }
+
+    for game in model.games[..model.first_unstarted].iter_mut() {
         game.update();
     }
 
-    let Mode::Compare = model.mode else {
-        return;
-    };
-
-    if !model.games.iter().all(|game| game.pos.is_game_over()) {
-        return;
+    if let Mode::Compare | Mode::FullCompare = model.mode {
+        if model.games.iter().all(|game| game.pos.is_game_over()) {
+            score(model);
+            process::exit(0);
+        }
     }
+}
 
+fn score(model: &mut Model) {
     let mut score1 = 0.0;
     let mut score2 = 0.0;
 
