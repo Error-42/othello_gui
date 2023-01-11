@@ -1,6 +1,6 @@
 use nannou::prelude::*;
 use othello_gui::*;
-use rand::seq::SliceRandom;
+use rand::seq::IteratorRandom;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::time::Duration;
@@ -162,37 +162,60 @@ fn model(app: &App) -> Model {
     }
 }
 
-fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
-    let max_concurrency = read_int(arg_iter, "<pairs of games>");
-    let randomisation = read_int(arg_iter, "<randomisation>");
+enum GameAmountMode {
+    All,
+    Some(usize),
+}
+
+fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {    
+    // TODO: handle depth = 0
+
+    let depth: usize = read_int(arg_iter, "<depth>");
+    if depth > 5 {
+        eprintln!("depth can be at most 5");
+        process::exit(13);
+    }    
+
+    let pairs_of_games = read_string(arg_iter, "<game amount>");
+    let game_amount_mode = match pairs_of_games.as_str() {
+        "a" | "all" => GameAmountMode::All,
+        num => GameAmountMode::Some(handled_parse(num, "<game amount> (which isn't 'all')")),
+    };
+
+    let max_concurrency = read_int(arg_iter, "<max concurrency>");
+    if max_concurrency == 0 {
+        eprintln!("max_concurrency must be at least 1");
+        process::exit(14);
+    }
 
     let player_a = read_ai_player(arg_iter);
     let player_b = read_ai_player(arg_iter);
 
     let mut games = Vec::new();
-    let mut rng = rand::thread_rng();
 
-    for i in 0..max_concurrency {
-        let mut pos = Pos::new();
+    let possible_starts = Pos::new().play_clone(othello_gui::Vec2::new(3, 4)).tree_end(depth - 1);
 
-        for _ in 0..randomisation {
-            let possibly_mv = pos.valid_moves().choose(&mut rng).copied();
-
-            match possibly_mv {
-                Some(mv) => pos.play(mv),
-                None => break,
+    let starts = match game_amount_mode {
+        GameAmountMode::All => possible_starts,
+        GameAmountMode::Some(mut pairs_of_games) => {
+            if pairs_of_games > possible_starts.len() {
+                println!("Warning: specified pairs of games is higher than possible game starts");
+                pairs_of_games = possible_starts.len();
             }
-        }
 
-        if pos.is_game_over() {
-            println!("Warning: game already ended in randomisation");
+            let mut rng = rand::thread_rng();
+
+            possible_starts.into_iter().choose_multiple(&mut rng, pairs_of_games)
         }
+    };
+
+    for (i, &start) in starts.iter().enumerate() {
 
         let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
         let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
 
-        games.push(Game::from_pos(i * 2, players1, pos));
-        games.push(Game::from_pos(i * 2 + 1, players2, pos));
+        games.push(Game::from_pos(i * 2, players1, start));
+        games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
     for game in games.iter_mut() {
