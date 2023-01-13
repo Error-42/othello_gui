@@ -81,19 +81,27 @@ fn print_help(program_name: &str) {
     // type annotation provided for rust-analyzer
     let detailed: &str = textwrap_macros::dedent!(
         r#"
-        Modes:
+        MODES:
 
-        help: print this
-        version: print version info
-        visual <player 1> <player 2>: play a game between two players
-        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: play <pairs of games> * 2 games concurrently to compare the strength of the two ais; each position is played twice with swapping white and black for fairness
+        help: Print this.
 
-        Mode arguments:
+        version: Print version info.
+
+        visual <player 1> <player 2>: Play a game between two players.
+
+        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>:
+        Play some games to compare the strength of two ais.
+        <depth>: Games are started from a position after <depth> plies. If depth >= 1, the first move is always d3.
+        <game amount>: all | <pairs of games>
+        - all: Play all possible openings defined by <depth>.
+        - <pairs of games>: Randomly choose <pairs of games> openings from all possible openings defined by <depth>.
+        <max concurrency>: Maximum number of games, the can be played at once.
+
+        COMMON MODE ARGUMENTS:
 
         <player>: human | <ai>
         <ai>: <path> <max time>
         <max time>: integer, in ms
-        <randomisation>: number of random moves at the beginning of games, so games aren't the same even with deterministic ais
 
         VISUAL PLAY:
 
