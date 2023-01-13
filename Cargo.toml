@@ -10,3 +10,6 @@ wait-timeout = "0.2.0"
 nannou = "0.18.1"
 rand = "0.8.5"
 othello_core_lib = { git = "https://github.com/Error-42/othello_core_lib.git" }
+textwrap-macros = "0.3.0"
+textwrap = { version = "0.16.0", features = ["smawk"] }
+crossterm = "0.25.0"

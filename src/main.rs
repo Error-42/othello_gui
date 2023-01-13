@@ -77,29 +77,46 @@ fn print_help(program_name: &str) {
     println!();
     println!("{} <mode> <mode arguments>", program_name);
     println!();
-    println!("Modes:");
+
+    // type annotation provided for rust-analyzer
+    let detailed: &str = textwrap_macros::dedent!(
+        r#"
+        Modes:
+
+        help: print this
+        version: print version info
+        visual <player 1> <player 2>: play a game between two players
+        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: play <pairs of games> * 2 games concurrently to compare the strength of the two ais; each position is played twice with swapping white and black for fairness
+
+        Mode arguments:
+
+        <player>: human | <ai>
+        <ai>: <path> <max time>
+        <max time>: integer, in ms
+        <randomisation>: number of random moves at the beginning of games, so games aren't the same even with deterministic ais
+
+        VISUAL PLAY:
+
+        left click: place disk
+        z: undo
+    "#
+    );
+
+    let terminal_width = crossterm::terminal::size().map(|size| size.0).unwrap_or(80);
+    let wrap_options = textwrap::Options::new(terminal_width as usize).subsequent_indent("    ");
+
+    // I couldn't get it to work without a collect() in the middle
+    let detailed = detailed
+        .lines()
+        .map(|ln| textwrap::wrap(ln, wrap_options.clone()))
+        .flatten()
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_owned();
+
+    println!("{}", detailed);
     println!();
-    println!("help: print this");
-    println!("version: print version info");
-    println!("visual <player 1> <player 2>: play a game between two players");
-    println!("compare <pairs of games> <randomisation> <ai 1> <ai 2>: play");
-    println!("  <pairs of games> * 2 games concurrently to compare the strength of");
-    println!("  the two ais; each position is played twice with swapping white and");
-    println!("  black for fairness");
-    println!();
-    println!("Mode arguments:");
-    println!();
-    println!("<player>: human | <ai>");
-    println!("<ai>: <path> <max time>");
-    println!("  <max time>: integer, in ms");
-    println!("<randomisation>: number of random moves at the beginning of games, so");
-    println!("  games aren't the same even with deterministic ais");
-    println!();
-    println!("VISUAL PLAY:");
-    println!();
-    println!("left click: place disk");
-    println!("z: undo");
-    println!()
 }
 
 fn print_version_info() {
@@ -167,14 +184,14 @@ enum GameAmountMode {
     Some(usize),
 }
 
-fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {    
+fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     // TODO: handle depth = 0
 
     let depth: usize = read_int(arg_iter, "<depth>");
     if depth > 5 {
         eprintln!("depth can be at most 5");
         process::exit(13);
-    }    
+    }
 
     let pairs_of_games = read_string(arg_iter, "<game amount>");
     let game_amount_mode = match pairs_of_games.as_str() {
@@ -193,7 +210,9 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
 
     let mut games = Vec::new();
 
-    let possible_starts = Pos::new().play_clone(othello_gui::Vec2::new(3, 4)).tree_end(depth - 1);
+    let possible_starts = Pos::new()
+        .play_clone(othello_gui::Vec2::new(3, 4))
+        .tree_end(depth - 1);
 
     let starts = match game_amount_mode {
         GameAmountMode::All => possible_starts,
@@ -205,12 +224,13 @@ fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
 
             let mut rng = rand::thread_rng();
 
-            possible_starts.into_iter().choose_multiple(&mut rng, pairs_of_games)
+            possible_starts
+                .into_iter()
+                .choose_multiple(&mut rng, pairs_of_games)
         }
     };
 
     for (i, &start) in starts.iter().enumerate() {
-
         let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
         let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
 
@@ -257,7 +277,6 @@ fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    
     StartData {
         games,
         mode: Mode::FullCompare,
@@ -366,10 +385,9 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
     // TODO: Oh no! If an ai crashes the game is over, however
-    // game.pos.is_game_over() will return false, since there are valid moves.  
+    // game.pos.is_game_over() will return false, since there are valid moves.
 
-    let ongoing = model
-        .games[..model.first_unstarted]
+    let ongoing = model.games[..model.first_unstarted]
         .iter()
         .filter(|&game| !game.pos.is_game_over())
         .count();
@@ -385,7 +403,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     }
 
     if model.games[model.showed_game_idx].pos.is_game_over() {
-        model.showed_game_idx = model.first_unstarted - 1;   
+        model.showed_game_idx = model.first_unstarted - 1;
     }
 
     for game in model.games[..model.first_unstarted].iter_mut() {
