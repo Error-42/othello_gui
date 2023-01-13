@@ -88,13 +88,12 @@ fn print_help(program_name: &str) {
 
         visual <player 1> <player 2>: Play a game between two players.
 
-        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>:
-        Play some games to compare the strength of two ais.
+        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: Play some games to compare the strength of two ais. Each opening is played twice, once as white and once as black for each ai.
         <depth>: Games are started from a position after <depth> plies. If depth >= 1, the first move is always d3.
         <game amount>: all | <pairs of games>
         - all: Play all possible openings defined by <depth>.
-        - <pairs of games>: Randomly choose <pairs of games> openings from all possible openings defined by <depth>.
-        <max concurrency>: Maximum number of games, the can be played at once.
+        - <pairs of games>: If depth = 0, play <pairs of games> * 2 games, otherwise randomly choose <pairs of games> openings from all possible openings defined by <depth>.
+        <max concurrency>: Maximum number of games that can be played at once.
 
         COMMON MODE ARGUMENTS:
 
