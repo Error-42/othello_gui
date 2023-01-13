@@ -115,8 +115,7 @@ fn print_help(program_name: &str) {
     // I couldn't get it to work without a collect() in the middle
     let detailed = detailed
         .lines()
-        .map(|ln| textwrap::wrap(ln, wrap_options.clone()))
-        .flatten()
+        .flat_map(|ln| textwrap::wrap(ln, wrap_options.clone()))
         .collect::<Vec<_>>()
         .join("\n")
         .trim()
