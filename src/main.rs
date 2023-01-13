@@ -190,8 +190,6 @@ enum GameAmountMode {
 }
 
 fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
-    // TODO: handle depth = 0
-
     let depth: usize = read_int(arg_iter, "<depth>");
     if depth > 5 {
         eprintln!("depth can be at most 5");
