@@ -168,7 +168,7 @@ fn model(app: &App) -> Model {
                 max_concurrency: 1,
             }
         }
-        "compare" => read_compare_mode(&mut arg_iter),
+        "compare" => handle_compare_mode(&mut arg_iter),
         "full-compare" => handle_full_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
@@ -192,7 +192,7 @@ enum GameAmountMode {
     Some(usize),
 }
 
-fn read_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
+fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     // TODO: handle depth = 0
 
     let depth: usize = read_int(arg_iter, "<depth>");
