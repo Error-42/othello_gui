@@ -161,9 +161,7 @@ impl AIRunHandle {
         let move_string = output[0];
 
         if move_string.len() != 2 {
-            return AIRunResult::InvalidOuput(format!(
-                "Output '{move_string}' has invalid length"
-            ));
+            return AIRunResult::InvalidOuput(format!("Output '{move_string}' has invalid length"));
         }
 
         let x_char = move_string.chars().next().unwrap();

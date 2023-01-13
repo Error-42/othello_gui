@@ -213,7 +213,7 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     let mut games = Vec::new();
 
     let possible_starts = if depth == 0 {
-        vec![ Pos::new() ]
+        vec![Pos::new()]
     } else {
         Pos::new()
             .play_clone(othello_gui::Vec2::new(3, 4))
@@ -227,7 +227,9 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
                 possible_starts.repeat(pairs_of_games)
             } else {
                 if pairs_of_games > possible_starts.len() {
-                    println!("Warning: specified pairs of games is higher than possible game starts,");
+                    println!(
+                        "Warning: specified pairs of games is higher than possible game starts,"
+                    );
                     println!("number of games adjusted");
                     pairs_of_games = possible_starts.len();
                 }
