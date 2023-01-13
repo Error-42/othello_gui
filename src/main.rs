@@ -215,23 +215,32 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
 
     let mut games = Vec::new();
 
-    let possible_starts = Pos::new()
-        .play_clone(othello_gui::Vec2::new(3, 4))
-        .tree_end(depth - 1);
+    let possible_starts = if depth == 0 {
+        vec![ Pos::new() ]
+    } else {
+        Pos::new()
+            .play_clone(othello_gui::Vec2::new(3, 4))
+            .tree_end(depth - 1)
+    };
 
     let starts = match game_amount_mode {
         GameAmountMode::All => possible_starts,
         GameAmountMode::Some(mut pairs_of_games) => {
-            if pairs_of_games > possible_starts.len() {
-                println!("Warning: specified pairs of games is higher than possible game starts");
-                pairs_of_games = possible_starts.len();
+            if depth == 0 {
+                possible_starts.repeat(pairs_of_games)
+            } else {
+                if pairs_of_games > possible_starts.len() {
+                    println!("Warning: specified pairs of games is higher than possible game starts,");
+                    println!("number of games adjusted");
+                    pairs_of_games = possible_starts.len();
+                }
+
+                let mut rng = rand::thread_rng();
+
+                possible_starts
+                    .into_iter()
+                    .choose_multiple(&mut rng, pairs_of_games)
             }
-
-            let mut rng = rand::thread_rng();
-
-            possible_starts
-                .into_iter()
-                .choose_multiple(&mut rng, pairs_of_games)
         }
     };
 
