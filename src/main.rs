@@ -14,7 +14,6 @@ fn main() {
 enum Mode {
     Visual,
     Compare,
-    FullCompare,
 }
 
 #[derive(Debug)]
@@ -169,7 +168,6 @@ fn model(app: &App) -> Model {
             }
         }
         "compare" => handle_compare_mode(&mut arg_iter),
-        "full-compare" => handle_full_compare_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{}'", other);
             print_help(program_name);
@@ -253,41 +251,6 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     StartData {
         games,
         mode: Mode::Compare,
-        max_concurrency,
-    }
-}
-
-fn handle_full_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
-    let max_concurrency = read_int(arg_iter, "<max concurrency>");
-    if max_concurrency == 0 {
-        eprintln!("max_concurrency must be at least 1");
-        process::exit(14);
-    }
-
-    let depth = read_int(arg_iter, "<depth>");
-    if depth > 5 {
-        eprintln!("depth can be at most 5");
-        process::exit(13);
-    }
-
-    let player_a = read_ai_player(arg_iter);
-    let player_b = read_ai_player(arg_iter);
-
-    let mut games = Vec::new();
-
-    let starts = Pos::new().tree_end(depth);
-
-    for (i, &start) in starts.iter().enumerate() {
-        let players1 = [player_a.try_clone().unwrap(), player_b.try_clone().unwrap()];
-        let players2 = [player_b.try_clone().unwrap(), player_a.try_clone().unwrap()];
-
-        games.push(Game::from_pos(i * 2, players1, start));
-        games.push(Game::from_pos(i * 2 + 1, players2, start));
-    }
-
-    StartData {
-        games,
-        mode: Mode::FullCompare,
         max_concurrency,
     }
 }
@@ -418,7 +381,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         game.update();
     }
 
-    if let Mode::Compare | Mode::FullCompare = model.mode {
+    if let Mode::Compare = model.mode {
         if model.games.iter().all(|game| game.pos.is_game_over()) {
             score(model);
             process::exit(0);
