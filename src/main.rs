@@ -74,7 +74,7 @@ fn print_help(program_name: &str) {
 
     println!("COMMAND LINE ARGUMENTS:");
     println!();
-    println!("{} <mode> <mode arguments>", program_name);
+    println!("{program_name} <mode> <mode arguments>");
     println!();
 
     // type annotation provided for rust-analyzer
@@ -120,7 +120,7 @@ fn print_help(program_name: &str) {
         .trim()
         .to_owned();
 
-    println!("{}", detailed);
+    println!("{detailed}");
     println!();
 }
 
@@ -167,7 +167,7 @@ fn model(app: &App) -> Model {
         }
         "compare" => handle_compare_mode(&mut arg_iter),
         other => {
-            eprintln!("Unknown mode '{}'", other);
+            eprintln!("Unknown mode '{other}'");
             print_help(program_name);
             process::exit(6);
         }
@@ -408,7 +408,7 @@ fn score(model: &mut Model) {
         }
     }
 
-    println!("Score 1: {:.1}, score 2: {:.1}", score1, score2);
+    println!("Score 1: {score1:.1}, score 2: {score2:.1}");
     process::exit(0);
 }
 

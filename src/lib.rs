@@ -162,8 +162,7 @@ impl AIRunHandle {
 
         if move_string.len() != 2 {
             return AIRunResult::InvalidOuput(format!(
-                "Output '{}' has invalid length",
-                move_string
+                "Output '{move_string}' has invalid length"
             ));
         }
 
@@ -171,8 +170,7 @@ impl AIRunHandle {
 
         if !('a'..='h').contains(&x_char) {
             return AIRunResult::InvalidOuput(format!(
-                "Move '{}' has invalid x coordinate",
-                move_string
+                "Move '{move_string}' has invalid x coordinate"
             ));
         }
 
@@ -180,8 +178,7 @@ impl AIRunHandle {
 
         if !('1'..='8').contains(&y_char) {
             return AIRunResult::InvalidOuput(format!(
-                "Move '{}' has invalid y coordinate",
-                move_string
+                "Move '{move_string}' has invalid y coordinate"
             ));
         }
 
@@ -281,7 +278,7 @@ impl Game {
         match self.next_player_mut() {
             Some(Player::AI(ai)) => {
                 ai.run(pos).unwrap_or_else(|err| {
-                    eprintln!("Error encountered while trying to run AI: {}", err);
+                    eprintln!("Error encountered while trying to run AI: {err}");
                     process::exit(4);
                 });
             }
