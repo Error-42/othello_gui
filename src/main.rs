@@ -132,7 +132,8 @@ fn print_version_info() {
 }
 
 fn model(app: &App) -> Model {
-    let window_id = app.new_window()
+    let window_id = app
+        .new_window()
         .view(view)
         .title(format!("Othello GUI - v{VERSION}"))
         .build()
@@ -293,7 +294,10 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
 
             if !base_path.is_file() {
                 if base_path.exists() {
-                    eprintln!("Path '{}' points to something not a file", base_path.display());
+                    eprintln!(
+                        "Path '{}' points to something not a file",
+                        base_path.display()
+                    );
                     process::exit(15);
                 } else {
                     eprintln!("Path '{}' is not valid", base_path.display());

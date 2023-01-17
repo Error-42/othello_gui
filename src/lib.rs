@@ -186,7 +186,12 @@ impl AIRunHandle {
 impl Drop for AIRunHandle {
     fn drop(&mut self) {
         debug_assert!(
-            matches!(self.child.try_wait().expect("Error waiting for AI to finish"), Some(_)),
+            matches!(
+                self.child
+                    .try_wait()
+                    .expect("Error waiting for AI to finish"),
+                Some(_)
+            ),
             "attempted to drop running AIRunHandle",
         )
     }
@@ -406,7 +411,7 @@ impl Game {
         let winner = self.winner.unwrap();
 
         debug_assert!(tile != Tile::Empty);
-        
+
         let relation = winner.relation(tile);
 
         match relation {
