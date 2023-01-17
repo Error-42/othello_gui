@@ -159,7 +159,7 @@ fn model(app: &App) -> Model {
             process::exit(0);
         }
         "visual" => {
-            let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
+            let game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
 
             let games = vec![game];
 
