@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, process};
 
-const VERSION: &str = "v0.9.1";
+const VERSION: &str = "v0.10.0";
 
 fn main() {
     nannou::app(model).event(event).update(update).run();
@@ -127,7 +127,7 @@ fn print_help(program_name: &str) {
 }
 
 fn print_version_info() {
-    println!("Othello GUI v0.10.0 by Error-42");
+    println!("Othello GUI v{VERSION} by Error-42");
     println!();
 }
 
