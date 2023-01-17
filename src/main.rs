@@ -6,6 +6,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, process};
 
+const VERSION: &str = "v0.9.1";
+
 fn main() {
     nannou::app(model).event(event).update(update).run();
 }
@@ -130,7 +132,11 @@ fn print_version_info() {
 }
 
 fn model(app: &App) -> Model {
-    let window_id = app.new_window().view(view).build().unwrap();
+    let window_id = app.new_window()
+        .view(view)
+        .title(format!("Othello GUI - v{VERSION}"))
+        .build()
+        .unwrap();
 
     let args: Vec<String> = env::args().collect();
 
