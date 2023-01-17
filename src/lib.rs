@@ -214,6 +214,7 @@ pub struct Game {
     pub pos: Pos,
     pub history: Vec<(Pos, Option<Vec2>)>,
     pub players: [Player; 2],
+    pub winner: Option<Tile>,
 }
 
 impl Game {
@@ -241,7 +242,7 @@ impl Game {
     }
 
     pub fn next_player(&self) -> Option<&Player> {
-        if self.pos.next_player == Tile::Empty {
+        if self.is_game_over() {
             None
         } else {
             Some(&self.players[self.pos.next_player as usize])
@@ -249,7 +250,7 @@ impl Game {
     }
 
     pub fn next_player_mut(&mut self) -> Option<&mut Player> {
-        if self.pos.next_player == Tile::Empty {
+        if self.is_game_over() {
             None
         } else {
             Some(&mut self.players[self.pos.next_player as usize])
@@ -283,6 +284,7 @@ impl Game {
             Some(Player::Human) => {}
             None => {
                 self.print_id();
+                self.winner = Some(self.pos.winner());
                 println!("Game ended, winner: {}", self.pos.winner());
             }
         }
@@ -298,6 +300,7 @@ impl Game {
             pos,
             history: vec![(pos, None)],
             players,
+            winner: None,
         }
     }
 
@@ -331,7 +334,7 @@ impl Game {
                 self.print_id();
                 println!("Error reading AI {} move: {}", self.pos.next_player, err);
                 self.print_input_for_debug();
-                process::exit(0);
+                self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::RuntimeError { status, stderr } => {
                 self.print_id();
@@ -343,13 +346,13 @@ impl Game {
                 println!("stderr of AI program:");
                 println!("{stderr}");
                 self.print_input_for_debug();
-                process::exit(0);
+                self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::TimeOut => {
                 self.print_id();
                 println!("AI {} program exceeded time limit", self.pos.next_player);
                 self.print_input_for_debug();
-                process::exit(0);
+                self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::Success(mv, notes) => {
                 ai.ai_run_handle = None;
@@ -363,7 +366,7 @@ impl Game {
                         mv.move_string()
                     );
                     self.print_input_for_debug();
-                    process::exit(0);
+                    self.winner = Some(self.pos.next_player.opponent());
                 }
             }
         }
@@ -389,5 +392,23 @@ impl Game {
         }
 
         self.initialize_next_player();
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        self.winner.is_some()
+    }
+
+    pub fn score_for(&self, tile: Tile) -> f32 {
+        let winner = self.winner.unwrap();
+
+        debug_assert!(tile != Tile::Empty);
+        
+        let relation = winner.relation(tile);
+
+        match relation {
+            Relation::Same => 1.0,
+            Relation::Neutral => 0.5,
+            Relation::Opponent => 0.0,
+        }
     }
 }

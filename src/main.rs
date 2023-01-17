@@ -367,7 +367,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
 
     let ongoing = model.games[..model.first_unstarted]
         .iter()
-        .filter(|&game| !game.pos.is_game_over())
+        .filter(|&game| !game.is_game_over())
         .count();
     let can_start = model.max_concurrency - ongoing;
 
@@ -380,7 +380,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         model.first_unstarted += 1;
     }
 
-    if model.games[model.showed_game_idx].pos.is_game_over() {
+    if model.games[model.showed_game_idx].is_game_over() {
         model.showed_game_idx = model.first_unstarted - 1;
     }
 
@@ -389,7 +389,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     }
 
     if let Mode::Compare = model.mode {
-        if model.games.iter().all(|game| game.pos.is_game_over()) {
+        if model.games.iter().all(|game| game.is_game_over()) {
             score(model);
             process::exit(0);
         }
@@ -402,11 +402,11 @@ fn score(model: &mut Model) {
 
     for i in 0..model.games.len() {
         if i % 2 == 0 {
-            score1 += model.games[i].pos.score_for(Tile::X);
-            score2 += model.games[i].pos.score_for(Tile::O);
+            score1 += model.games[i].score_for(Tile::X);
+            score2 += model.games[i].score_for(Tile::O);
         } else {
-            score1 += model.games[i].pos.score_for(Tile::O);
-            score2 += model.games[i].pos.score_for(Tile::X);
+            score1 += model.games[i].score_for(Tile::O);
+            score2 += model.games[i].score_for(Tile::X);
         }
     }
 
