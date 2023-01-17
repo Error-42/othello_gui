@@ -362,9 +362,6 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    // TODO: Oh no! If an ai crashes the game is over, however
-    // game.pos.is_game_over() will return false, since there are valid moves.
-
     let ongoing = model.games[..model.first_unstarted]
         .iter()
         .filter(|&game| !game.is_game_over())
