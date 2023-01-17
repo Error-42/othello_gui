@@ -1,6 +1,6 @@
 use std::error::Error;
-use std::ffi::OsString;
 use std::io::{self, Read, Write};
+use std::path::PathBuf;
 use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::time::*;
 
@@ -9,7 +9,7 @@ pub use othello_core_lib::*;
 
 #[derive(Debug)]
 pub struct AI {
-    pub path: OsString,
+    pub path: PathBuf,
     pub time_limit: Duration,
     pub ai_run_handle: Option<AIRunHandle>,
 }
@@ -33,20 +33,7 @@ impl AI {
     }
 
     pub fn run(&mut self, pos: Pos) -> io::Result<()> {
-        let mut proc = if cfg!(target_os = "windows") {
-            Command::new("cmd")
-        } else {
-            todo!("Implement running for linux")
-        };
-
-        let handle = if cfg!(target_os = "windows") {
-            proc.arg("/C")
-        } else {
-            todo!("Implement running for linux")
-        };
-
-        let mut child = handle
-            .arg(self.path.clone())
+        let mut child = Command::new(self.path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -58,6 +45,8 @@ impl AI {
 
         let start = Instant::now();
 
+        println!("running: {}", child.id());
+
         self.ai_run_handle = Some(AIRunHandle {
             child,
             start,
@@ -67,7 +56,7 @@ impl AI {
         Ok(())
     }
 
-    pub fn new(path: OsString, time_limit: Duration) -> Self {
+    pub fn new(path: PathBuf, time_limit: Duration) -> Self {
         Self {
             path,
             time_limit,
@@ -117,8 +106,7 @@ impl AIRunHandle {
             Some(status) => self.handle_finished_child(status),
             None => {
                 if self.start.elapsed() > self.time_limit {
-                    // TODO: processes aren't terminated properly
-                    self.child.kill().unwrap_or_default();
+                    self.child.kill().unwrap();
                     AIRunResult::TimeOut
                 } else {
                     AIRunResult::Running
@@ -191,6 +179,16 @@ impl AIRunHandle {
         } else {
             AIRunResult::Success(mv, None)
         }
+    }
+}
+
+// bad temporary solution for checking...
+impl Drop for AIRunHandle {
+    fn drop(&mut self) {
+        debug_assert!(
+            matches!(self.child.try_wait().expect("Error waiting for AI to finish"), Some(_)),
+            "attempted to drop running AIRunHandle",
+        )
     }
 }
 

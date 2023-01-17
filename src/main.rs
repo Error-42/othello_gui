@@ -155,8 +155,6 @@ fn model(app: &App) -> Model {
         "visual" => {
             let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
 
-            game.initialize_next_player();
-
             let games = vec![game];
 
             StartData {
@@ -251,10 +249,6 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    for game in games.iter_mut() {
-        game.initialize_next_player();
-    }
-
     StartData {
         games,
         mode: Mode::Compare,
@@ -287,6 +281,19 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
             }
 
             let time_limit = Duration::from_millis(time_limit_ms);
+
+            let mut base_path = env::current_dir().expect("error getting current path");
+            base_path.push(path);
+
+            if !base_path.is_file() {
+                if base_path.exists() {
+                    eprintln!("Path '{}' points to something not a file", base_path.display());
+                    process::exit(15);
+                } else {
+                    eprintln!("Path '{}' is not valid", base_path.display());
+                    process::exit(16);
+                }
+            }
 
             Player::AI(AI::new(path.into(), time_limit))
         }
@@ -408,7 +415,6 @@ fn score(model: &mut Model) {
     }
 
     println!("Score 1: {score1:.1}, score 2: {score2:.1}");
-    process::exit(0);
 }
 
 // reimplementation required, so it is a constant function
