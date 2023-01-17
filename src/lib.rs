@@ -117,6 +117,7 @@ impl AIRunHandle {
             Some(status) => self.handle_finished_child(status),
             None => {
                 if self.start.elapsed() > self.time_limit {
+                    // TODO: processes aren't terminated properly
                     self.child.kill().unwrap_or_default();
                     AIRunResult::TimeOut
                 } else {
