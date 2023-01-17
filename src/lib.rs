@@ -261,6 +261,11 @@ impl Game {
         println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
         self.pos.play(mv);
         self.history.push((self.pos, Some(mv)));
+
+        // TODO: make it work with undos
+        if self.pos.is_game_over() {
+            self.winner = Some(self.pos.winner());
+        }
     }
 
     pub fn initialize(&mut self) {
