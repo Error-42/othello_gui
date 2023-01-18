@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, process};
 
-const VERSION: &str = "v0.10.0";
+const VERSION: &str = "v0.11.0";
 
 fn main() {
     nannou::app(model).event(event).update(update).run();
