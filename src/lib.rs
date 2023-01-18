@@ -388,6 +388,8 @@ impl Game {
             }
         }
 
+        self.winner = None;
+
         while self.history.len() >= 2 {
             self.history.pop();
             self.print_id();
