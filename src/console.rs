@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::io::{Write, stdout};
 use crossterm::{cursor, ExecutableCommand, terminal};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -8,13 +8,15 @@ pub struct Console {
 }
 
 impl Console {
-    pub fn print_with_level(&self, level: Level, message: &str) {
-        #[cfg(not(debug_assertions))]
-        if level == Level::Debug {
-            return;
+    pub fn new(level: Level) -> Self {
+        Self {
+            pinned: None,
+            level,
         }
+    }
 
-        if level < self.level {
+    pub fn print_with_level(&self, level: Level, message: &str) {
+        if level < self.level || (cfg!(debug_assert) && level == Level::Debug) {
             return;
         }
 
@@ -24,6 +26,7 @@ impl Console {
 
         if let Some(pinned) = &self.pinned {
             print!("{}", pinned);
+            stdout().flush().unwrap();
         }
     }
 
@@ -44,9 +47,16 @@ impl Console {
     }
 
     pub fn pin(&mut self, pinned: String) {
+        if let Some(already_pinned) = &self.pinned {
+            if *already_pinned == pinned {
+                return;
+            }
+        }
+
         self.clear_pinned();
 
         print!("{pinned}");
+        stdout().flush().unwrap();
         self.pinned = Some(pinned);
     }
 
@@ -73,7 +83,7 @@ pub enum Level {
     Necessary = 3,
     Warning = 2,
     Info = 1,
-    // debug is only printed in debug builds
+    // debug is printed only and always in debug builds
     Debug = 0,
 }
 

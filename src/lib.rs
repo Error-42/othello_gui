@@ -3,6 +3,7 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::time::*;
+use console::*;
 
 pub use othello_core_lib::*;
 // use run::*;
@@ -227,8 +228,8 @@ impl Game {
     // TODO: contains macros with side-effects (println!).
     // Maybe rewrite it, so there are no side-effects?
 
-    fn print_id(&self) {
-        print!("#{:_>3}> ", self.id);
+    fn formatted_id(&self) -> String {
+        format!("#{:_>3}>", self.id)
     }
 
     pub fn prev_player(&self) -> Option<&Player> {
@@ -263,9 +264,15 @@ impl Game {
         }
     }
 
-    pub fn play(&mut self, mv: Vec2, notes: &str) {
-        self.print_id();
-        println!("{}: {} ({})", self.pos.next_player, mv.move_string(), notes);
+    pub fn play(&mut self, mv: Vec2, notes: &str, console: &Console) {
+        console.info(&format!(
+            "{} {}: {} ({})",
+            self.formatted_id(),
+            self.pos.next_player,
+            mv.move_string(),
+            notes
+        ));
+
         self.pos.play(mv);
         self.history.push((self.pos, Some(mv)));
 
@@ -275,14 +282,13 @@ impl Game {
         }
     }
 
-    pub fn initialize(&mut self) {
-        self.print_id();
-        println!("Game started");
+    pub fn initialize(&mut self, console: &Console) {
+        console.info(&format!("{} Game Started", self.formatted_id()));
 
-        self.initialize_next_player();
+        self.initialize_next_player(console);
     }
 
-    pub fn initialize_next_player(&mut self) {
+    pub fn initialize_next_player(&mut self, console: &Console) {
         let pos = self.pos;
 
         match self.next_player_mut() {
@@ -294,9 +300,8 @@ impl Game {
             }
             Some(Player::Human) => {}
             None => {
-                self.print_id();
                 self.winner = Some(self.pos.winner());
-                println!("Game ended, winner: {}", self.pos.winner());
+                console.info(&format!("{} Game ended, winner: {}", self.formatted_id(), self.pos.winner()));
             }
         }
     }
@@ -315,20 +320,18 @@ impl Game {
         }
     }
 
-    pub fn print_input_for_debug(&mut self) {
-        self.print_id();
-        println!("Input was: ");
-
+    pub fn print_input_for_debug(&mut self, console: &Console) {
+        console.warn(&format!("{} Input was:", self.formatted_id()));
         let pos = self.pos;
 
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             panic!("print_input_for_debug was not called with an ai as next player");
         };
 
-        println!("{}", ai.input(pos));
+        console.warn(&ai.input(pos));
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, console: &Console) {
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             return;
         };
@@ -342,48 +345,52 @@ impl Game {
         match res {
             AIRunResult::Running => {}
             AIRunResult::InvalidOuput(err) => {
-                self.print_id();
-                println!("Error reading AI {} move: {}", self.pos.next_player, err);
-                self.print_input_for_debug();
+                
+                console.warn(&format!(
+                    "{} Error reading AI {} move: {}",
+                    self.formatted_id(),
+                    self.pos.next_player,
+                    err
+                ));
+                self.print_input_for_debug(console);
                 self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::RuntimeError { status, stderr } => {
-                self.print_id();
-                println!(
+                console.warn(&format!(
                     "AI {} program exit code was non-zero: {}",
                     self.pos.next_player,
                     status.code().unwrap(),
-                );
-                println!("stderr of AI program:");
-                println!("{stderr}");
-                self.print_input_for_debug();
+                ));
+                console.warn("stderr of AI program:");
+                console.warn(&stderr);
+                self.print_input_for_debug(console);
                 self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::TimeOut => {
-                self.print_id();
-                println!("AI {} program exceeded time limit", self.pos.next_player);
-                self.print_input_for_debug();
+                console.warn(&format!("AI {} program exceeded time limit", self.pos.next_player));
+                self.print_input_for_debug(console);
                 self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::Success(mv, notes) => {
                 ai.ai_run_handle = None;
                 if self.pos.is_valid_move(mv) {
-                    self.play(mv, &notes.unwrap_or("no notes provided".to_owned()));
-                    self.initialize_next_player();
+                    self.play(mv, &notes.unwrap_or("no notes provided".to_owned()), console);
+                    self.initialize_next_player(console);
                 } else {
-                    println!(
-                        "Invalid move played by AI {}: {}",
+                    console.warn(&format!(
+                        "{} Invalid move played by AI {}: {}",
+                        self.formatted_id(),
                         self.pos.next_player,
                         mv.move_string()
-                    );
-                    self.print_input_for_debug();
+                    ));
+                    self.print_input_for_debug(console);
                     self.winner = Some(self.pos.next_player.opponent());
                 }
             }
         }
     }
 
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self, console: &Console) {
         if let Some(Player::AI(ai)) = self.next_player_mut() {
             if let Some(run_handle) = &mut ai.ai_run_handle {
                 run_handle.kill().unwrap_or_default();
@@ -394,8 +401,7 @@ impl Game {
 
         while self.history.len() >= 2 {
             self.history.pop();
-            self.print_id();
-            println!("Undid move");
+            console.info(&format!("{} Undid move", self.formatted_id()));
 
             self.pos = self.history.last().expect("history empty").0;
 
@@ -404,7 +410,7 @@ impl Game {
             }
         }
 
-        self.initialize_next_player();
+        self.initialize_next_player(console);
     }
 
     pub fn is_game_over(&self) -> bool {

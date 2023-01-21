@@ -1,6 +1,7 @@
 use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::IteratorRandom;
+use console::*;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::time::Duration;
@@ -26,6 +27,7 @@ struct Model {
     mode: Mode,
     first_unstarted: usize,
     max_concurrency: usize,
+    console: Console,
 }
 
 impl Model {
@@ -185,6 +187,7 @@ fn model(app: &App) -> Model {
         mode: start_data.mode,
         first_unstarted: 0,
         max_concurrency: start_data.max_concurrency,
+        console: Console::new(Level::Info),
     }
 }
 
@@ -348,7 +351,7 @@ fn handle_undo(model: &mut Model) {
         return;
     };
 
-    model.showed_game_mut().undo();
+    model.games[model.showed_game_idx].undo(&model.console);
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
@@ -370,12 +373,12 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
         }
 
         if game.pos.is_valid_move(coor) {
-            game.play(coor, "human");
+            game.play(coor, "human", &model.console);
         }
         break;
     }
 
-    game.initialize_next_player();
+    game.initialize_next_player(&model.console);
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
@@ -390,7 +393,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         [model.first_unstarted..(model.first_unstarted + can_start).min(model_games_len)]
         .iter_mut()
     {
-        game.initialize();
+        game.initialize(&model.console);
         model.first_unstarted += 1;
     }
 
@@ -399,11 +402,14 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     }
 
     for game in model.games[..model.first_unstarted].iter_mut() {
-        game.update();
+        game.update(&model.console);
     }
 
     if let Mode::Compare = model.mode {
+        model.console.pin(format!("Games done: {}/{}", model.first_unstarted - model.max_concurrency, model.games.len()));
+
         if model.games.iter().all(|game| game.is_game_over()) {
+            model.console.unpin();
             score(model);
             process::exit(0);
         }
@@ -424,7 +430,7 @@ fn score(model: &mut Model) {
         }
     }
 
-    println!("Score 1: {score1:.1}, score 2: {score2:.1}");
+    model.console.print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
 }
 
 // reimplementation required, so it is a constant function
