@@ -7,6 +7,8 @@ use std::time::*;
 pub use othello_core_lib::*;
 // use run::*;
 
+pub mod console;
+
 #[derive(Debug)]
 pub struct AI {
     pub path: PathBuf,
