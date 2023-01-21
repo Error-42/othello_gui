@@ -292,6 +292,7 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
 
             let time_limit = Duration::from_millis(time_limit_ms);
 
+            // TODO: this is unused
             let mut base_path = env::current_dir().expect("error getting current path");
             base_path.push(path);
 
