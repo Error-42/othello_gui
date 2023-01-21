@@ -47,8 +47,6 @@ impl AI {
 
         let start = Instant::now();
 
-        println!("running: {}", child.id());
-
         self.ai_run_handle = Some(AIRunHandle {
             child,
             start,
