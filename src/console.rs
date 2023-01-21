@@ -21,13 +21,16 @@ impl Console {
         }
 
         if let Some(pinned) = &self.pinned {
-            print!("\n{}", pinned);
+            let message_line_count = message.lines().count();
+
+            print!("{}{}", "\n".repeat(message_line_count), pinned);
             stdout()
-                .queue(cursor::MoveUp(1)).unwrap()
-                .queue(cursor::MoveToColumn(0)).unwrap();
+                .queue(cursor::MoveUp(message_line_count as u16)).unwrap()
+                .queue(cursor::MoveToColumn(0)).unwrap()
+                .queue(terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
             print!("{message}");
             stdout()
-                .queue(cursor::MoveDown(1)).unwrap()
+                .queue(cursor::MoveDown(message_line_count as u16)).unwrap()
                 .queue(cursor::MoveToColumn(0)).unwrap();
             stdout().flush().unwrap();
         } else {
