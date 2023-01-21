@@ -1,5 +1,5 @@
 use std::io::{Write, stdout};
-use crossterm::{cursor, ExecutableCommand, terminal};
+use crossterm::{cursor, ExecutableCommand, QueueableCommand, terminal};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Console {
@@ -20,13 +20,18 @@ impl Console {
             return;
         }
 
-        self.clear_pinned();
-
-        println!("{message}");
-
         if let Some(pinned) = &self.pinned {
-            print!("{}", pinned);
+            print!("\n{}", pinned);
+            stdout()
+                .queue(cursor::MoveUp(1)).unwrap()
+                .queue(cursor::MoveToColumn(0)).unwrap();
+            print!("{message}");
+            stdout()
+                .queue(cursor::MoveDown(1)).unwrap()
+                .queue(cursor::MoveToColumn(0)).unwrap();
             stdout().flush().unwrap();
+        } else {
+            println!("{message}");
         }
     }
 
