@@ -417,6 +417,14 @@ impl Game {
         self.winner.is_some()
     }
 
+    pub fn winner_player(&self) -> Option<&Player> {
+        Some(&self.players[self.winner? as usize])
+    }
+
+    pub fn winner_player_mut(&mut self) -> Option<&mut Player> {
+        Some(&mut self.players[self.winner? as usize])
+    }
+
     pub fn score_for(&self, tile: Tile) -> f32 {
         let winner = self.winner.unwrap();
 

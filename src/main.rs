@@ -2,6 +2,8 @@ use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::IteratorRandom;
 use console::*;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::time::Duration;
@@ -17,6 +19,7 @@ fn main() {
 enum Mode {
     Visual,
     Compare,
+    Tournament,
 }
 
 #[derive(Debug)]
@@ -173,6 +176,7 @@ fn model(app: &App) -> Model {
             }
         }
         "compare" => handle_compare_mode(&mut arg_iter),
+        "tournament" => handle_tournament_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{other}'");
             print_help(program_name);
@@ -262,6 +266,58 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
     StartData {
         games,
         mode: Mode::Compare,
+        max_concurrency,
+    }
+}
+
+fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
+    let ai_list_file = read_string(arg_iter, "<ai list>");
+    let time_limit = Duration::from_millis(read_int(arg_iter, "<max time>"));
+    let max_concurrency = read_int(arg_iter, "<max concurrency>");
+
+    let ai_paths: Vec<PathBuf> = std::fs::read_to_string(ai_list_file)
+        .unwrap_or_else(|err| {
+            eprintln!("Unable to read <ai list>: {err}");
+            process::exit(16);
+        })
+        .lines()
+        .map(|ln| ln.trim().to_owned().into())
+        .collect();
+    
+    for path in &ai_paths {
+        if !path.exists() {
+            eprintln!("Path '{}' is not valid", path.display());
+            process::exit(17);
+        }
+
+        if path.is_dir() {
+            eprintln!(
+                "Path '{}' points to something not a file",
+                path.display()
+            );
+        }
+    }
+
+    let mut games = Vec::new();
+
+    let mut id = 0;
+
+    for (i, path_1) in ai_paths.iter().enumerate() {
+        for path_2 in &ai_paths[i + 1..] {
+            let player_1 = Player::AI(AI::new(path_1.clone(), time_limit));
+            let player_2 = Player::AI(AI::new(path_2.clone(), time_limit));
+
+            games.push(Game::new(id, [player_1.try_clone().unwrap(), player_2.try_clone().unwrap()]));
+            id += 1;
+            
+            games.push(Game::new(id, [player_2.try_clone().unwrap(), player_1.try_clone().unwrap()]));
+            id += 1;
+        }
+    }
+
+    StartData { 
+        games: games, 
+        mode: Mode::Tournament, 
         max_concurrency,
     }
 }
@@ -406,18 +462,25 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         game.update(&model.console);
     }
 
-    if let Mode::Compare = model.mode {
-        model.console.pin(format!("Games done: {}/{}", model.first_unstarted - model.max_concurrency, model.games.len()));
+    if let Mode::Compare | Mode::Tournament = model.mode {
+        let finished = model.games[..model.first_unstarted].iter().filter(|&game| game.is_game_over()).count();
 
-        if model.games.iter().all(|game| game.is_game_over()) {
-            model.console.unpin();
-            score(model);
-            process::exit(0);
+        model.console.pin(format!("Games done: {}/{}", finished, model.games.len()));
+    }
+
+    if model.games.iter().all(|game| game.is_game_over()) {
+        match model.mode {
+            Mode::Compare => finish_compare(model),
+            Mode::Tournament => finish_tournament(model),
+            _ => {},
         }
     }
+
 }
 
-fn score(model: &mut Model) {
+fn finish_compare(model: &mut Model) -> ! {
+    model.console.unpin();
+
     let mut score1 = 0.0;
     let mut score2 = 0.0;
 
@@ -432,6 +495,35 @@ fn score(model: &mut Model) {
     }
 
     model.console.print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
+    
+    process::exit(0);
+}
+
+fn finish_tournament(model: &mut Model) -> ! {
+    model.console.unpin();
+    
+    let mut scores: HashMap<PathBuf, f32> = HashMap::new();
+
+    for game in &model.games {
+        for (i, tile) in Tile::opponent_iter().enumerate() {
+            let score = game.score_for(tile);
+
+            let Player::AI(ai) = &game.players[i] else {
+                panic!("tournament shouldn't contain human players");
+            };
+
+            *scores.entry(ai.path.clone()).or_insert(0.0) += score;
+        }
+    }
+
+    let mut scores : Vec<_> = scores.into_iter().collect();
+    scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
+
+    for (path, score) in scores {
+        model.console.print(&format!("{: >5.1} {}", score, path.display()))
+    }
+
+    process::exit(0);
 }
 
 // reimplementation required, so it is a constant function
