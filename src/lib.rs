@@ -182,6 +182,7 @@ impl AIRunHandle {
     }
 }
 
+/*
 // bad temporary solution for checking...
 impl Drop for AIRunHandle {
     fn drop(&mut self) {
@@ -196,6 +197,7 @@ impl Drop for AIRunHandle {
         )
     }
 }
+*/
 
 #[derive(Debug)]
 pub enum Player {
