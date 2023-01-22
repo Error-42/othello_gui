@@ -73,3 +73,36 @@ where Player: Clone + Eq + Hash
 
     elos
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn elo_1() {
+        let games = vec![
+            Game { players: ["a", "b"], score: 0.0 },
+            Game { players: ["b", "a"], score: 0.5 },
+        ];
+
+        let elos = from_single_tournament(&games, 50, 16.0);
+        
+        assert!((elos["a"] + elos["b"] - 2000.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn elo_2() {
+        let games = vec![
+            Game { players: ["a", "b"], score: 0.0 },
+            Game { players: ["b", "a"], score: 0.5 },
+            Game { players: ["a", "c"], score: 1.0 },
+            Game { players: ["c", "a"], score: 0.5 },
+            Game { players: ["b", "c"], score: 1.0 },
+            Game { players: ["c", "b"], score: 0.0 },
+        ];
+
+        let elos = from_single_tournament(&games, 50, 16.0);
+        
+        assert!((elos["a"] + elos["b"] + elos["c"] - 3000.0).abs() < 5.0);
+    }
+}
