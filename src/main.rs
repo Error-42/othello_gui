@@ -184,6 +184,29 @@ fn model(app: &App) -> Model {
         }
     };
 
+    let mut level = Level::Info;
+
+    while let Some(option) = arg_iter.next() {
+        match option.to_lowercase().as_str() {
+            "-l" | "--level" => {
+                level = match read_string(&mut arg_iter, "<level>").to_lowercase().as_str() {
+                    "i" | "info" => Level::Info,
+                    "w" | "warn" | "warning" => Level::Warning,
+                    "n" | "necessary" => Level::Necessary,
+                    other => {
+                        eprintln!("Unknown <level> '{other}'");
+                        process::exit(19);
+                    }
+                }
+            }
+            other => {
+                eprintln!("Unrecognised option '{other}'");
+                print_help(program_name);
+                process::exit(18);
+            }
+        }
+    }
+
     Model {
         window_id,
         games: start_data.games,
@@ -191,7 +214,7 @@ fn model(app: &App) -> Model {
         mode: start_data.mode,
         first_unstarted: 0,
         max_concurrency: start_data.max_concurrency,
-        console: Console::new(Level::Info),
+        console: Console::new(level),
     }
 }
 
