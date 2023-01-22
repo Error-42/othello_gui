@@ -571,7 +571,7 @@ fn finish_tournament(model: &mut Model) -> ! {
                 score: game.score_for(Tile::X),
             })
             .collect::<Vec<_>>(),
-        1000,
+        50,
         16.0,
     );
 
