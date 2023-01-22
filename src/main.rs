@@ -156,15 +156,15 @@ fn model(app: &App) -> Model {
     });
 
     let start_data = match mode.to_lowercase().as_str() {
-        "help" => {
+        "h" | "help" => {
             print_help(program_name);
             process::exit(0);
         }
-        "version" => {
+        "ver" | "version" => {
             print_version_info();
             process::exit(0);
         }
-        "visual" => {
+        "v" | "visual" => {
             let game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
 
             let games = vec![game];
@@ -175,8 +175,8 @@ fn model(app: &App) -> Model {
                 max_concurrency: 1,
             }
         }
-        "compare" => handle_compare_mode(&mut arg_iter),
-        "tournament" => handle_tournament_mode(&mut arg_iter),
+        "c" | "compare" => handle_compare_mode(&mut arg_iter),
+        "t" | "tournament" => handle_tournament_mode(&mut arg_iter),
         other => {
             eprintln!("Unknown mode '{other}'");
             print_help(program_name);
