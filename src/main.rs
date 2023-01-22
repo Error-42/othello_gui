@@ -552,10 +552,12 @@ fn finish_tournament(model: &mut Model) -> ! {
     }
 
     let elos = elo::from_single_tournament(
-        &model.games
+        &model
+            .games
             .iter()
-            .map(|game| elo::Game { 
-                players: game.players
+            .map(|game| elo::Game {
+                players: game
+                    .players
                     .iter()
                     .map(|player| {
                         let Player::AI(player) = player else {
@@ -576,12 +578,17 @@ fn finish_tournament(model: &mut Model) -> ! {
     let mut scores: Vec<_> = scores.into_iter().collect();
     scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
 
-    model.console.print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
+    model
+        .console
+        .print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
 
     for (path, score) in scores {
-        model
-            .console
-            .print(&format!("{: >4.0} {: >5.1} {}", elos[&path], score, path.display()))
+        model.console.print(&format!(
+            "{: >4.0} {: >5.1} {}",
+            elos[&path],
+            score,
+            path.display()
+        ))
     }
 
     process::exit(0);
