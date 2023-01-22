@@ -1,9 +1,9 @@
+use console::*;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::time::*;
-use console::*;
 
 pub use othello_core_lib::*;
 // use run::*;
@@ -301,7 +301,11 @@ impl Game {
             Some(Player::Human) => {}
             None => {
                 self.winner = Some(self.pos.winner());
-                console.info(&format!("{} Game ended, winner: {}", self.formatted_id(), self.pos.winner()));
+                console.info(&format!(
+                    "{} Game ended, winner: {}",
+                    self.formatted_id(),
+                    self.pos.winner()
+                ));
             }
         }
     }
@@ -345,7 +349,6 @@ impl Game {
         match res {
             AIRunResult::Running => {}
             AIRunResult::InvalidOuput(err) => {
-                
                 console.warn(&format!(
                     "{} Error reading AI {} move: {}",
                     self.formatted_id(),
@@ -367,14 +370,21 @@ impl Game {
                 self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::TimeOut => {
-                console.warn(&format!("AI {} program exceeded time limit", self.pos.next_player));
+                console.warn(&format!(
+                    "AI {} program exceeded time limit",
+                    self.pos.next_player
+                ));
                 self.print_input_for_debug(console);
                 self.winner = Some(self.pos.next_player.opponent());
             }
             AIRunResult::Success(mv, notes) => {
                 ai.ai_run_handle = None;
                 if self.pos.is_valid_move(mv) {
-                    self.play(mv, &notes.unwrap_or("no notes provided".to_owned()), console);
+                    self.play(
+                        mv,
+                        &notes.unwrap_or("no notes provided".to_owned()),
+                        console,
+                    );
                     self.initialize_next_player(console);
                 } else {
                     console.warn(&format!(

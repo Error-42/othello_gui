@@ -1,5 +1,5 @@
-use std::io::{Write, stdout};
-use crossterm::{cursor, ExecutableCommand, QueueableCommand, terminal};
+use crossterm::{cursor, terminal, ExecutableCommand, QueueableCommand};
+use std::io::{stdout, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Console {
@@ -25,13 +25,18 @@ impl Console {
 
             print!("{}{}", "\n".repeat(message_line_count), pinned);
             stdout()
-                .queue(cursor::MoveUp(message_line_count as u16)).unwrap()
-                .queue(cursor::MoveToColumn(0)).unwrap()
-                .queue(terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
+                .queue(cursor::MoveUp(message_line_count as u16))
+                .unwrap()
+                .queue(cursor::MoveToColumn(0))
+                .unwrap()
+                .queue(terminal::Clear(terminal::ClearType::CurrentLine))
+                .unwrap();
             print!("{message}");
             stdout()
-                .queue(cursor::MoveDown(message_line_count as u16)).unwrap()
-                .queue(cursor::MoveToColumn(0)).unwrap();
+                .queue(cursor::MoveDown(message_line_count as u16))
+                .unwrap()
+                .queue(cursor::MoveToColumn(0))
+                .unwrap();
             stdout().flush().unwrap();
         } else {
             println!("{message}");
@@ -94,4 +99,3 @@ pub enum Level {
     // debug is printed only and always in debug builds
     Debug = 0,
 }
-

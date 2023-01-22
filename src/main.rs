@@ -1,7 +1,7 @@
+use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::IteratorRandom;
-use console::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::slice::Iter;
@@ -189,7 +189,10 @@ fn model(app: &App) -> Model {
     while let Some(option) = arg_iter.next() {
         match option.to_lowercase().as_str() {
             "-l" | "--level" => {
-                level = match read_string(&mut arg_iter, "<level>").to_lowercase().as_str() {
+                level = match read_string(&mut arg_iter, "<level>")
+                    .to_lowercase()
+                    .as_str()
+                {
                     "i" | "info" => Level::Info,
                     "w" | "warn" | "warning" => Level::Warning,
                     "n" | "necessary" => Level::Necessary,
@@ -306,7 +309,7 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         .lines()
         .map(|ln| ln.trim().to_owned().into())
         .collect();
-    
+
     for path in &ai_paths {
         if !path.exists() {
             eprintln!("Path '{}' is not valid", path.display());
@@ -314,10 +317,7 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         }
 
         if path.is_dir() {
-            eprintln!(
-                "Path '{}' points to something not a file",
-                path.display()
-            );
+            eprintln!("Path '{}' points to something not a file", path.display());
         }
     }
 
@@ -330,17 +330,23 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
             let player_1 = Player::AI(AI::new(path_1.clone(), time_limit));
             let player_2 = Player::AI(AI::new(path_2.clone(), time_limit));
 
-            games.push(Game::new(id, [player_1.try_clone().unwrap(), player_2.try_clone().unwrap()]));
+            games.push(Game::new(
+                id,
+                [player_1.try_clone().unwrap(), player_2.try_clone().unwrap()],
+            ));
             id += 1;
-            
-            games.push(Game::new(id, [player_2.try_clone().unwrap(), player_1.try_clone().unwrap()]));
+
+            games.push(Game::new(
+                id,
+                [player_2.try_clone().unwrap(), player_1.try_clone().unwrap()],
+            ));
             id += 1;
         }
     }
 
-    StartData { 
-        games: games, 
-        mode: Mode::Tournament, 
+    StartData {
+        games: games,
+        mode: Mode::Tournament,
         max_concurrency,
     }
 }
@@ -486,19 +492,23 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
     }
 
     if let Mode::Compare | Mode::Tournament = model.mode {
-        let finished = model.games[..model.first_unstarted].iter().filter(|&game| game.is_game_over()).count();
+        let finished = model.games[..model.first_unstarted]
+            .iter()
+            .filter(|&game| game.is_game_over())
+            .count();
 
-        model.console.pin(format!("Games done: {}/{}", finished, model.games.len()));
+        model
+            .console
+            .pin(format!("Games done: {}/{}", finished, model.games.len()));
     }
 
     if model.games.iter().all(|game| game.is_game_over()) {
         match model.mode {
             Mode::Compare => finish_compare(model),
             Mode::Tournament => finish_tournament(model),
-            _ => {},
+            _ => {}
         }
     }
-
 }
 
 fn finish_compare(model: &mut Model) -> ! {
@@ -517,14 +527,16 @@ fn finish_compare(model: &mut Model) -> ! {
         }
     }
 
-    model.console.print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
-    
+    model
+        .console
+        .print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
+
     process::exit(0);
 }
 
 fn finish_tournament(model: &mut Model) -> ! {
     model.console.unpin();
-    
+
     let mut scores: HashMap<PathBuf, f32> = HashMap::new();
 
     for game in &model.games {
@@ -539,11 +551,13 @@ fn finish_tournament(model: &mut Model) -> ! {
         }
     }
 
-    let mut scores : Vec<_> = scores.into_iter().collect();
+    let mut scores: Vec<_> = scores.into_iter().collect();
     scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
 
     for (path, score) in scores {
-        model.console.print(&format!("{: >5.1} {}", score, path.display()))
+        model
+            .console
+            .print(&format!("{: >5.1} {}", score, path.display()))
     }
 
     process::exit(0);
