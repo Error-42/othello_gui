@@ -1474,6 +1474,7 @@ dependencies = [
  "nannou",
  "othello_core_lib",
  "rand 0.8.5",
+ "skillratings",
  "textwrap",
  "textwrap-macros",
  "wait-timeout",
@@ -1964,6 +1965,12 @@ checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "skillratings"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca93202059c9d58d5532db08e7e487ca7b8f7fd07c8548b059b49aa5bf8205d7"
 
 [[package]]
 name = "slab"

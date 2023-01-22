@@ -9,6 +9,7 @@ pub use othello_core_lib::*;
 // use run::*;
 
 pub mod console;
+pub mod elo;
 
 #[derive(Debug)]
 pub struct AI {

@@ -551,13 +551,37 @@ fn finish_tournament(model: &mut Model) -> ! {
         }
     }
 
+    let elos = elo::from_single_tournament(
+        &model.games
+            .iter()
+            .map(|game| elo::Game { 
+                players: game.players
+                    .iter()
+                    .map(|player| {
+                        let Player::AI(player) = player else {
+                            panic!("tournament shouldn't contain human players");
+                        };
+                        player.path.clone()
+                    })
+                    .collect::<Vec<PathBuf>>()
+                    .try_into()
+                    .unwrap(),
+                score: game.score_for(Tile::X),
+            })
+            .collect::<Vec<_>>(),
+        1000,
+        16.0,
+    );
+
     let mut scores: Vec<_> = scores.into_iter().collect();
     scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
+
+    model.console.print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
 
     for (path, score) in scores {
         model
             .console
-            .print(&format!("{: >5.1} {}", score, path.display()))
+            .print(&format!("{: >4.0} {: >5.1} {}", elos[&path], score, path.display()))
     }
 
     process::exit(0);
