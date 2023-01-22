@@ -53,6 +53,8 @@ where Player: Clone + Eq + Hash
     }
 
     for _i in 0..iterations {
+        let mut new_elos = elos.clone();
+
         for (player, games) in &games_by_player {
             let rating = EloRating { rating: elos[player] };
 
@@ -60,11 +62,13 @@ where Player: Clone + Eq + Hash
                 .map(|HalfGame { opponent, outcome }| (EloRating { rating: elos[opponent] }, *outcome))
                 .collect();
 
-            elos.insert(
+            new_elos.insert(
                 player.clone(),
                 elo_rating_period(&rating, &games, &EloConfig { k: first_k }).rating
             );
         }
+
+        elos = new_elos;
     }
 
     elos
