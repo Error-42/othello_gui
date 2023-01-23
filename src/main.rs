@@ -334,6 +334,11 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         process::exit(19);
     }
 
+    if ai_paths.len() == 1 {
+        eprintln!("AI list only contains one element: '{}'", ai_paths[0].to_string_lossy());
+        process::exit(19);
+    }
+
     for path in &ai_paths {
         if !path.exists() {
             eprintln!("Path '{}' is not valid", path.display());
