@@ -102,26 +102,26 @@ fn print_help(program_name: &str) {
         - <pairs of games>: If depth = 0, play <pairs of games> * 2 games, otherwise randomly choose <pairs of games> openings from all possible openings defined by <depth>.
         
         [t]ournament <ai list> <max time> <max concurrency>: Every AI plays every other AI twice once as white and once as black. At the end a score table and estimated élő is displayed. (If élő scores cannot be calculated properly, incorrect values are displayed.)
-        <ai list>: path of file containing list of ai paths
+        <ai list>: path of file containing list of ai paths.
 
         COMMON MODE ARGUMENTS:
 
         <player>: human | <ai>
         <ai>: <path> <max time>
-        <max time>: integer, in ms
+        <max time>: integer, in milliseconds.
         <max concurrency>: Maximum number of games that can be played at once.
 
         OPTIONS:
 
         --[l]evel: [i]nfo | [w]arn | [n]ecessary
-        ~ info: output everything, default
-        ~ warn: only output AI errors, crashes and necessary
-        ~ necessary: only output progress and end results
+        ~ info: output everything, default.
+        ~ warn: only output AI errors, crashes and necessary.
+        ~ necessary: only output progress and end results.
 
         VISUAL PLAY:
 
-        left click: place disk
-        z: undo
+        left click: place disk.
+        z: undo.
     "#
     );
 
