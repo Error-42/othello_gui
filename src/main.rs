@@ -297,18 +297,32 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
 }
 
 fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
-    let ai_list_file = read_string(arg_iter, "<ai list>");
+    let ai_list_path_string = read_string(arg_iter, "<ai list>");
+    let ai_list_path_path: PathBuf = ai_list_path_string.clone().into();
     let time_limit = Duration::from_millis(read_int(arg_iter, "<max time>"));
     let max_concurrency = read_int(arg_iter, "<max concurrency>");
 
-    let ai_paths: Vec<PathBuf> = std::fs::read_to_string(ai_list_file)
+    let ai_paths: Vec<PathBuf> = std::fs::read_to_string(ai_list_path_string)
         .unwrap_or_else(|err| {
             eprintln!("Unable to read <ai list>: {err}");
             process::exit(16);
         })
+        .trim()
         .lines()
-        .map(|ln| ln.trim().to_owned().into())
+        .map(|ln| {
+            let mut base_path: PathBuf = ai_list_path_path.parent().unwrap().to_owned();
+            let extend: PathBuf = ln.trim().to_owned().into();
+            
+            base_path.push(extend);
+            
+            base_path
+        })
         .collect();
+    
+    if ai_paths.is_empty() {
+        eprintln!("AI list file is empty");
+        process::exit(19);
+    }
 
     for path in &ai_paths {
         if !path.exists() {
@@ -319,6 +333,11 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         if path.is_dir() {
             eprintln!("Path '{}' points to something not a file", path.display());
         }
+    }
+
+    if !has_unique_elements(ai_paths.clone()) {
+        eprintln!("AI list contains duplicate elements");
+        process::exit(20);
     }
 
     let mut games = Vec::new();

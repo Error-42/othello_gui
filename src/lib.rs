@@ -1,5 +1,7 @@
 use console::*;
+use std::collections::HashSet;
 use std::error::Error;
+use std::hash::Hash;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::{self, Child, Command, ExitStatus, Stdio};
@@ -449,4 +451,14 @@ impl Game {
             Relation::Opponent => 0.0,
         }
     }
+}
+
+// https://stackoverflow.com/questions/46766560/how-to-check-if-there-are-duplicates-in-a-slice
+pub fn has_unique_elements<T>(iter: T) -> bool
+where
+    T: IntoIterator,
+    T::Item: Eq + Hash,
+{
+    let mut uniq = HashSet::new();
+    iter.into_iter().all(move |x| uniq.insert(x))
 }
