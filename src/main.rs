@@ -89,24 +89,34 @@ fn print_help(program_name: &str) {
         r#"
         MODES:
 
-        help: Print this.
+        [h]elp: Print this.
 
-        version: Print version info.
+        [ver]sion: Print version info.
 
-        visual <player 1> <player 2>: Play a game between two players.
+        [v]isual <player 1> <player 2>: Play a game between two players.
 
-        compare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: Play some games to compare the strength of two ais. Each opening is played twice, once as white and once as black for each ai.
+        [c]ompare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: Play some games to compare the strength of two ais. Each opening is played twice, once as white and once as black for each ai.
         <depth>: Games are started from a position after <depth> plies. If depth >= 1, the first move is always d3.
         <game amount>: all | <pairs of games>
         - all: Play all possible openings defined by <depth>.
         - <pairs of games>: If depth = 0, play <pairs of games> * 2 games, otherwise randomly choose <pairs of games> openings from all possible openings defined by <depth>.
-        <max concurrency>: Maximum number of games that can be played at once.
+        
+        [t]ournament <ai list> <max time> <max concurrency>: Every AI plays every other AI twice once as white and once as black. At the end a score table and estimated élő is displayed. (If élő scores cannot be calculated properly, incorrect values are displayed.)
+        <ai list>: path of file containing list of ai paths
 
         COMMON MODE ARGUMENTS:
 
         <player>: human | <ai>
         <ai>: <path> <max time>
         <max time>: integer, in ms
+        <max concurrency>: Maximum number of games that can be played at once.
+
+        OPTIONS:
+
+        --[l]evel: [i]nfo | [w]arn | [n]ecessary
+        ~ info: output everything, default
+        ~ warn: only output AI errors, crashes and necessary
+        ~ necessary: only output progress and end results
 
         VISUAL PLAY:
 
