@@ -80,7 +80,7 @@ impl Console {
     }
 
     fn clear_pinned(&self) {
-        if let Some(_) = self.pinned {
+        if self.pinned.is_some() {
             stdout()
                 .execute(terminal::Clear(terminal::ClearType::CurrentLine))
                 .unwrap()

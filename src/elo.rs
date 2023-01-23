@@ -48,7 +48,7 @@ where
 
         games_by_player
             .entry(game.players[0].clone())
-            .or_insert(Vec::new())
+            .or_default()
             .push(HalfGame::new(
                 game.players[1].clone(),
                 score_to_outcome(game.score),
@@ -56,7 +56,7 @@ where
 
         games_by_player
             .entry(game.players[1].clone())
-            .or_insert(Vec::new())
+            .or_default()
             .push(HalfGame::new(
                 game.players[0].clone(),
                 score_to_outcome(1.0 - game.score),

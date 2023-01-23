@@ -379,7 +379,7 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
     }
 
     StartData {
-        games: games,
+        games,
         mode: Mode::Tournament,
         max_concurrency,
     }
