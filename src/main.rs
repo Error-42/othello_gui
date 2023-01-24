@@ -9,7 +9,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, process};
 
-const VERSION: &str = "0.12.0-dev.3";
+const VERSION: &str = "0.12.0";
 
 fn main() {
     nannou::app(model).event(event).update(update).run();
