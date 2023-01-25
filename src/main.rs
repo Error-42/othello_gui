@@ -322,20 +322,23 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         .map(|ln| {
             let mut base_path: PathBuf = ai_list_path_path.parent().unwrap().to_owned();
             let extend: PathBuf = ln.trim().to_owned().into();
-            
+
             base_path.push(extend);
-            
+
             base_path
         })
         .collect();
-    
+
     if ai_paths.is_empty() {
         eprintln!("AI list file is empty");
         process::exit(19);
     }
 
     if ai_paths.len() == 1 {
-        eprintln!("AI list only contains one element: '{}'", ai_paths[0].to_string_lossy());
+        eprintln!(
+            "AI list only contains one element: '{}'",
+            ai_paths[0].to_string_lossy()
+        );
         process::exit(19);
     }
 
