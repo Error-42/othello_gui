@@ -543,7 +543,7 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         match model.mode {
             Mode::Compare => finish_compare(model),
             Mode::Tournament => finish_tournament(model),
-            _ => {}
+            Mode::Visual => {}
         }
     }
 }
@@ -625,7 +625,7 @@ fn finish_tournament(model: &mut Model) -> ! {
             elos[&path],
             score,
             path.display()
-        ))
+        ));
     }
 
     process::exit(0);
