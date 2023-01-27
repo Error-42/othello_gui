@@ -386,7 +386,7 @@ impl Game {
                 if self.pos.is_valid_move(mv) {
                     self.play(
                         mv,
-                        &notes.unwrap_or("no notes provided".to_owned()),
+                        &notes.unwrap_or_else(|| "no notes provided".to_owned()),
                         console,
                     );
                     self.initialize_next_player(console);

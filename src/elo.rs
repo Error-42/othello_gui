@@ -22,6 +22,34 @@ impl<Player> HalfGame<Player> {
     }
 }
 
+fn new_elo<Player>(
+    player: &Player,
+    games: &[HalfGame<Player>],
+    elos: &HashMap<Player, f64>,
+    k: f64,
+) -> f64
+where
+    Player: Eq + Hash,
+{
+    let rating = EloRating {
+        rating: elos[player],
+    };
+
+    let games: Vec<_> = games
+        .iter()
+        .map(|HalfGame { opponent, outcome }| {
+            (
+                EloRating {
+                    rating: elos[opponent],
+                },
+                *outcome,
+            )
+        })
+        .collect();
+
+    elo_rating_period(&rating, &games, &EloConfig { k }).rating
+}
+
 pub fn score_to_outcome(score: f32) -> Outcomes {
     match score {
         s if s == 0.0 => Outcomes::LOSS,
@@ -34,7 +62,7 @@ pub fn score_to_outcome(score: f32) -> Outcomes {
 pub fn from_single_tournament<Player>(
     games: &[Game<Player>],
     iterations: usize,
-    first_k: f64,
+    k: f64,
 ) -> HashMap<Player, f64>
 where
     Player: Clone + Eq + Hash,
@@ -67,26 +95,8 @@ where
         let mut new_elos = elos.clone();
 
         for (player, games) in &games_by_player {
-            let rating = EloRating {
-                rating: elos[player],
-            };
-
-            let games: Vec<_> = games
-                .iter()
-                .map(|HalfGame { opponent, outcome }| {
-                    (
-                        EloRating {
-                            rating: elos[opponent],
-                        },
-                        *outcome,
-                    )
-                })
-                .collect();
-
-            new_elos.insert(
-                player.clone(),
-                elo_rating_period(&rating, &games, &EloConfig { k: first_k }).rating,
-            );
+            let new_rating = new_elo(player, games, &elos, k);
+            new_elos.insert(player.clone(), new_rating);
         }
 
         elos = new_elos;

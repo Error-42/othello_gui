@@ -48,6 +48,7 @@ impl Model {
 
         let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
 
+        #[allow(clippy::needless_range_loop)]
         for x in 0..8 {
             for y in 0..8 {
                 rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
