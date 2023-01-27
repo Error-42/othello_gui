@@ -325,12 +325,15 @@ impl Game {
 
     pub fn print_input_for_debug(&mut self, console: &Console) {
         let pos = self.pos;
-        
+
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             panic!("print_input_for_debug was not called with an ai as next player");
         };
-        
-        console.warn(&format!("For '{}' the input was", ai.path.to_string_lossy()));
+
+        console.warn(&format!(
+            "For '{}' the input was",
+            ai.path.to_string_lossy()
+        ));
         console.warn(&ai.input(pos));
     }
 
