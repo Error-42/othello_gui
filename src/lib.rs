@@ -228,9 +228,6 @@ pub struct Game {
 }
 
 impl Game {
-    // TODO: contains macros with side-effects (println!).
-    // Maybe rewrite it, so there are no side-effects?
-
     fn formatted_id(&self) -> String {
         format!("#{:_>3}>", self.id)
     }
