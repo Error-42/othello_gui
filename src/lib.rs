@@ -276,7 +276,6 @@ impl Game {
         self.pos.play(mv);
         self.history.push((self.pos, Some(mv)));
 
-        // TODO: make it work with undos
         if self.pos.is_game_over() {
             self.winner = Some(self.pos.winner());
         }
