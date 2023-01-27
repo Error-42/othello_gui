@@ -328,13 +328,13 @@ impl Game {
     }
 
     pub fn print_input_for_debug(&mut self, console: &Console) {
-        console.warn(&format!("{} Input was:", self.formatted_id()));
         let pos = self.pos;
-
+        
         let Some(Player::AI(ai)) = self.next_player_mut() else {
             panic!("print_input_for_debug was not called with an ai as next player");
         };
-
+        
+        console.warn(&format!("For '{}' the input was", ai.path.to_string_lossy()));
         console.warn(&ai.input(pos));
     }
 
@@ -363,7 +363,8 @@ impl Game {
             }
             AIRunResult::RuntimeError { status, stderr } => {
                 console.warn(&format!(
-                    "AI {} program exit code was non-zero: {}",
+                    "{} AI {} program exit code was non-zero: {}",
+                    self.formatted_id(),
                     self.pos.next_player,
                     status.code().unwrap(),
                 ));
@@ -374,7 +375,8 @@ impl Game {
             }
             AIRunResult::TimeOut => {
                 console.warn(&format!(
-                    "AI {} program exceeded time limit",
+                    "{} AI {} program exceeded time limit",
+                    self.formatted_id(),
                     self.pos.next_player
                 ));
                 self.print_input_for_debug(console);
