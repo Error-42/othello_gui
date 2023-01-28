@@ -14,3 +14,4 @@ textwrap-macros = "0.3.0"
 textwrap = { version = "0.16.0", features = ["smawk"] }
 crossterm = "0.25.0"
 skillratings = "0.24.0"
+ambassador = "0.3.5"

@@ -1,3 +1,4 @@
+use ambassador::{delegatable_trait, Delegate};
 use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
@@ -19,9 +20,94 @@ fn main() {
     nannou::app(model).event(event).update(update).run();
 }
 
+// DATA
+
+#[delegatable_trait]
+pub trait Showable {
+    fn showed_game(&self) -> &Game;
+}
+
+#[derive(Debug)]
+struct Model {
+    window_id: window::Id,
+    mode: Mode,
+}
+
+impl Model {
+    fn get_rects(window: &Window) -> [[Rect; 8]; 8] {
+        const SIZE_MULTIPLIER: (f32, f32) = (0.95, 0.95);
+
+        let scale = f32::min(
+            window.inner_size_points().0 / SIZE_MULTIPLIER.0,
+            window.inner_size_points().1 / SIZE_MULTIPLIER.1,
+        );
+
+        let size = (scale * SIZE_MULTIPLIER.0, scale * SIZE_MULTIPLIER.1);
+
+        let used = Rect::from_w_h(size.0, size.1);
+
+        let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
+
+        #[allow(clippy::needless_range_loop)]
+        for x in 0..8 {
+            for y in 0..8 {
+                rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
+                    .bottom_left_of(used)
+                    .shift_x(size.0 / 8.0 * x as f32)
+                    .shift_y(size.1 / 8.0 * y as f32);
+            }
+        }
+
+        rects
+    }
+}
+
+#[derive(Debug, Delegate)]
+#[delegate(Showable)]
+enum Mode {
+    Visual(Visual),
+    AIArena(AIArena),
+}
+
+#[derive(Debug)]
+struct Visual {
+    game: Game,
+    console: Console,
+}
+
+impl Showable for Visual {
+    fn showed_game(&self) ->  &Game {
+        &self.game
+    }
+}
+
+#[derive(Debug)]
+struct AIArena {
+    games: Vec<Game>,
+    showed_game_idx: usize,
+    first_unstarted: usize,
+    max_concurrency: usize,
+    console: Console,
+    submode: Submode,
+}
+
+impl Showable for AIArena {
+    fn showed_game(&self) ->  &Game {
+        &self.games[self.showed_game_idx]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Submode {
+    Compare,
+    Tournament,
+}
+
 // INITALIZATION
 
 fn model(app: &App) -> Model {
+    // maybe use something like `clap` later for argument parsing?
+
     let window_id = app
         .new_window()
         .view(view)
@@ -40,7 +126,7 @@ fn model(app: &App) -> Model {
         process::exit(5);
     });
 
-    let start_data = match mode.to_lowercase().as_str() {
+    let mut mode = match mode.to_lowercase().as_str() {
         "h" | "help" => {
             print_help(program_name);
             process::exit(0);
@@ -52,13 +138,10 @@ fn model(app: &App) -> Model {
         "v" | "visual" => {
             let game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
 
-            let games = vec![game];
-
-            StartData {
-                games,
-                mode: Mode::Visual,
-                max_concurrency: 1,
-            }
+            Mode::Visual(Visual {
+                game,
+                console: Console::new(Level::Info),
+            })
         }
         "c" | "compare" => handle_compare_mode(&mut arg_iter),
         "t" | "tournament" => handle_tournament_mode(&mut arg_iter),
@@ -95,14 +178,14 @@ fn model(app: &App) -> Model {
         }
     }
 
+    match &mut mode {
+        Mode::Visual(visual) => visual.console.level = level,
+        Mode::AIArena(arena) => arena.console.level = level,
+    }
+
     Model {
         window_id,
-        games: start_data.games,
-        showed_game_idx: 0,
-        mode: start_data.mode,
-        first_unstarted: 0,
-        max_concurrency: start_data.max_concurrency,
-        console: Console::new(level),
+        mode,
     }
 }
 
@@ -176,7 +259,7 @@ fn print_version_info() {
     println!();
 }
 
-fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
+fn handle_compare_mode(arg_iter: &mut Iter<String>) -> Mode {
     let depth: usize = read_int(arg_iter, "<depth>");
     if depth > 5 {
         eprintln!("depth can be at most 5");
@@ -239,14 +322,17 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    StartData {
+    Mode::AIArena(AIArena {
         games,
-        mode: Mode::Compare,
+        showed_game_idx: 0,
+        first_unstarted: 0,
         max_concurrency,
-    }
+        console: Console::new(Level::Info),
+        submode: Submode::Compare,
+    })
 }
 
-fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
+fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
     let ai_list_path_string = read_string(arg_iter, "<ai list>");
     let ai_list_path_path: PathBuf = ai_list_path_string.clone().into();
     let time_limit = Duration::from_millis(read_int(arg_iter, "<max time>"));
@@ -321,73 +407,14 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
         }
     }
 
-    StartData {
+    Mode::AIArena(AIArena {
         games,
-        mode: Mode::Tournament,
+        showed_game_idx: 0,
+        first_unstarted: 0,
         max_concurrency,
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Mode {
-    Visual,
-    Compare,
-    Tournament,
-}
-
-#[derive(Debug)]
-struct Model {
-    window_id: window::Id,
-    games: Vec<Game>,
-    showed_game_idx: usize,
-    mode: Mode,
-    first_unstarted: usize,
-    max_concurrency: usize,
-    console: Console,
-}
-
-impl Model {
-    fn get_rects(window: &Window) -> [[Rect; 8]; 8] {
-        const SIZE_MULTIPLIER: (f32, f32) = (0.95, 0.95);
-
-        let scale = f32::min(
-            window.inner_size_points().0 / SIZE_MULTIPLIER.0,
-            window.inner_size_points().1 / SIZE_MULTIPLIER.1,
-        );
-
-        let size = (scale * SIZE_MULTIPLIER.0, scale * SIZE_MULTIPLIER.1);
-
-        let used = Rect::from_w_h(size.0, size.1);
-
-        let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
-
-        #[allow(clippy::needless_range_loop)]
-        for x in 0..8 {
-            for y in 0..8 {
-                rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
-                    .bottom_left_of(used)
-                    .shift_x(size.0 / 8.0 * x as f32)
-                    .shift_y(size.1 / 8.0 * y as f32);
-            }
-        }
-
-        rects
-    }
-
-    fn showed_game(&self) -> &Game {
-        &self.games[self.showed_game_idx]
-    }
-
-    #[allow(unused)]
-    fn showed_game_mut(&mut self) -> &mut Game {
-        &mut self.games[self.showed_game_idx]
-    }
-}
-
-struct StartData {
-    games: Vec<Game>,
-    mode: Mode,
-    max_concurrency: usize,
+        console: Console::new(Level::Info),
+        submode: Submode::Tournament,
+    })
 }
 
 enum GameAmountMode {
@@ -479,18 +506,19 @@ fn event(app: &App, model: &mut Model, event: Event) {
 }
 
 fn handle_undo(model: &mut Model) {
-    let Mode::Visual = model.mode else {
+    let Mode::Visual(visual) = &mut model.mode else {
         return;
     };
 
-    model.games[model.showed_game_idx].undo(&model.console);
+    visual.game.undo(&visual.console);
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
-    // cannot use model.showed_game_mut() as that mut borrows whole model
-    let game = &mut model.games[model.showed_game_idx];
+    let Mode::Visual(visual) = &mut model.mode else {
+        return;
+    };
 
-    let Some(Player::Human) = game.next_player() else {
+    let Some(Player::Human) = visual.game.next_player() else {
         return;
     };
 
@@ -504,88 +532,92 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
             continue;
         }
 
-        if game.pos.is_valid_move(coor) {
-            game.play(coor, "human", &model.console);
+        if visual.game.pos.is_valid_move(coor) {
+            visual.game.play(coor, "human", &visual.console);
         }
         break;
     }
 
-    game.initialize_next_player(&model.console);
+    visual.game.initialize_next_player(&visual.console);
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    let ongoing = model.games[..model.first_unstarted]
+    match &mut model.mode {
+        Mode::AIArena(arena) => update_ai_arena(arena),
+        _ => {}
+    }
+}
+
+fn update_ai_arena(arena: &mut AIArena) {
+    let ongoing = arena.games[..arena.first_unstarted]
         .iter()
         .filter(|&game| !game.is_game_over())
         .count();
-    let can_start = model.max_concurrency - ongoing;
+    let can_start = arena.max_concurrency - ongoing;
 
-    let model_games_len = model.games.len();
-    for game in model.games
-        [model.first_unstarted..(model.first_unstarted + can_start).min(model_games_len)]
+    let model_games_len = arena.games.len();
+    for game in arena.games
+        [arena.first_unstarted..(arena.first_unstarted + can_start).min(model_games_len)]
         .iter_mut()
     {
-        game.initialize(&model.console);
-        model.first_unstarted += 1;
+        game.initialize(&arena.console);
+        arena.first_unstarted += 1;
     }
 
-    if model.games[model.showed_game_idx].is_game_over() {
-        model.showed_game_idx = model.first_unstarted - 1;
+    if arena.games[arena.showed_game_idx].is_game_over() {
+        arena.showed_game_idx = arena.first_unstarted - 1;
     }
 
-    for game in model.games[..model.first_unstarted].iter_mut() {
-        game.update(&model.console);
+    for game in arena.games[..arena.first_unstarted].iter_mut() {
+        game.update(&arena.console);
     }
 
-    if let Mode::Compare | Mode::Tournament = model.mode {
-        let finished = model.games[..model.first_unstarted]
-            .iter()
-            .filter(|&game| game.is_game_over())
-            .count();
+    let finished = arena.games[..arena.first_unstarted]
+        .iter()
+        .filter(|&game| game.is_game_over())
+        .count();
 
-        model
-            .console
-            .pin(format!("Games done: {}/{}", finished, model.games.len()));
-    }
+    arena
+        .console
+        .pin(format!("Games done: {}/{}", finished, arena.games.len()));
 
-    if model.games.iter().all(|game| game.is_game_over()) {
-        match model.mode {
-            Mode::Compare => finish_compare(model),
-            Mode::Tournament => finish_tournament(model),
-            Mode::Visual => {}
+    if arena.games.iter().all(|game| game.is_game_over()) {
+        match arena.submode {
+            Submode::Compare => finish_compare(arena),
+            Submode::Tournament => finish_tournament(arena),
         }
     }
 }
 
-fn finish_compare(model: &mut Model) -> ! {
-    model.console.unpin();
+fn finish_compare(arena: &mut AIArena) -> ! {
+    arena.console.unpin();
 
     let mut score1 = 0.0;
     let mut score2 = 0.0;
 
-    for i in 0..model.games.len() {
+    for i in 0..arena.games.len() {
         if i % 2 == 0 {
-            score1 += model.games[i].score_for(Tile::X);
-            score2 += model.games[i].score_for(Tile::O);
+            score1 += arena.games[i].score_for(Tile::X);
+            score2 += arena.games[i].score_for(Tile::O);
         } else {
-            score1 += model.games[i].score_for(Tile::O);
-            score2 += model.games[i].score_for(Tile::X);
+            score1 += arena.games[i].score_for(Tile::O);
+            score2 += arena.games[i].score_for(Tile::X);
         }
     }
 
-    model
+    arena
         .console
         .print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
 
     process::exit(0);
 }
 
-fn finish_tournament(model: &mut Model) -> ! {
-    model.console.unpin();
+fn finish_tournament(arena: &mut AIArena) -> ! {
+    arena.console.unpin();
 
     let mut scores: HashMap<PathBuf, f32> = HashMap::new();
 
-    for game in &model.games {
+    for game in &arena.games {
         for (i, tile) in Tile::opponent_iter().enumerate() {
             let score = game.score_for(tile);
 
@@ -598,7 +630,7 @@ fn finish_tournament(model: &mut Model) -> ! {
     }
 
     let elos = elo::from_single_tournament(
-        &model
+        &arena
             .games
             .iter()
             .map(|game| elo::Game {
@@ -624,12 +656,12 @@ fn finish_tournament(model: &mut Model) -> ! {
     let mut scores: Vec<_> = scores.into_iter().collect();
     scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
 
-    model
+    arena
         .console
         .print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
 
     for (path, score) in scores {
-        model.console.print(&format!(
+        arena.console.print(&format!(
             "{: >4.0} {: >5.1} {}",
             elos[&path],
             score,
@@ -653,7 +685,7 @@ const TILE_STROKE_WEIGHT: f32 = 5.0;
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let window = app.window(model.window_id).expect("Error finding window.");
-    let game = model.showed_game();
+    let game = model.mode.showed_game();
 
     let draw = app.draw();
     draw.background().color(BACKGROUND_COLOR);
