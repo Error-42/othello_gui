@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 ambassador = "0.3.5"
-crossterm = "0.25.0"
+crossterm = "0.26.0"
 nannou = "0.18.1"
 othello_core_lib = { git = "https://github.com/Error-42/othello_core_lib.git" }
 rand = "0.8.5"
