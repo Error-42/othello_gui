@@ -11,7 +11,6 @@ use std::{
     slice::Iter,
     str::FromStr,
     time::Duration,
-
 };
 
 const VERSION: &str = "0.12.0";
