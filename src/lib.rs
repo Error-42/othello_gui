@@ -1,11 +1,13 @@
 use console::*;
-use std::collections::HashSet;
-use std::error::Error;
-use std::hash::Hash;
-use std::io::{self, Read, Write};
-use std::path::PathBuf;
-use std::process::{self, Child, Command, ExitStatus, Stdio};
-use std::time::*;
+use std::{
+    collections::HashSet,
+    error::Error,
+    hash::Hash,
+    io::{self, Read, Write},
+    path::PathBuf,
+    process::{self, Child, Command, ExitStatus, Stdio},
+    time::*,
+};
 
 pub use othello_core_lib::*;
 // use run::*;

@@ -2,12 +2,16 @@ use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::IteratorRandom;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::slice::Iter;
-use std::str::FromStr;
-use std::time::Duration;
-use std::{env, process};
+use std::{
+    collections::HashMap,
+    env,
+    path::PathBuf,
+    process,
+    slice::Iter,
+    str::FromStr,
+    time::Duration,
+
+};
 
 const VERSION: &str = "0.12.0";
 
