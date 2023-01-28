@@ -390,8 +390,8 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
 
     for (i, path_1) in ai_paths.iter().enumerate() {
         for path_2 in &ai_paths[i + 1..] {
-            let player_1 = Player::AI(AI::new(path_1.clone(), time_limit));
-            let player_2 = Player::AI(AI::new(path_2.clone(), time_limit));
+            let player_1 = MixedPlayer::AI(AI::new(path_1.clone(), time_limit));
+            let player_2 = MixedPlayer::AI(AI::new(path_2.clone(), time_limit));
 
             games.push(Game::new(
                 id,
@@ -422,10 +422,10 @@ enum GameAmountMode {
     Some(usize),
 }
 
-fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
+fn read_ai_player(arg_iter: &mut Iter<String>) -> MixedPlayer {
     let player = read_player(arg_iter);
 
-    if let Player::Human = player {
+    if let MixedPlayer::Human = player {
         eprintln!("Human player is not accepted");
         process::exit(9);
     }
@@ -433,11 +433,11 @@ fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
     player
 }
 
-fn read_player(arg_iter: &mut Iter<String>) -> Player {
+fn read_player(arg_iter: &mut Iter<String>) -> MixedPlayer {
     let player_arg = read_string(arg_iter, "<player>");
 
     match player_arg.to_lowercase().as_str() {
-        "human" => Player::Human,
+        "human" => MixedPlayer::Human,
         path => {
             let time_limit_ms = read_int(arg_iter, "<max time>");
 
@@ -465,7 +465,7 @@ fn read_player(arg_iter: &mut Iter<String>) -> Player {
                 }
             }
 
-            Player::AI(AI::new(path.into(), time_limit))
+            MixedPlayer::AI(AI::new(path.into(), time_limit))
         }
     }
 }
@@ -518,7 +518,7 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
         return;
     };
 
-    let Some(Player::Human) = visual.game.next_player() else {
+    let Some(MixedPlayer::Human) = visual.game.next_player() else {
         return;
     };
 
@@ -621,7 +621,7 @@ fn finish_tournament(arena: &mut AIArena) -> ! {
         for (i, tile) in Tile::opponent_iter().enumerate() {
             let score = game.score_for(tile);
 
-            let Player::AI(ai) = &game.players[i] else {
+            let MixedPlayer::AI(ai) = &game.players[i] else {
                 panic!("tournament shouldn't contain human players");
             };
 
@@ -638,7 +638,7 @@ fn finish_tournament(arena: &mut AIArena) -> ! {
                     .players
                     .iter()
                     .map(|player| {
-                        let Player::AI(player) = player else {
+                        let MixedPlayer::AI(player) = player else {
                             panic!("tournament shouldn't contain human players");
                         };
                         player.path.clone()

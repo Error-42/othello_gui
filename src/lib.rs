@@ -206,16 +206,16 @@ impl Drop for AIRunHandle {
 */
 
 #[derive(Debug)]
-pub enum Player {
+pub enum MixedPlayer {
     AI(AI),
     Human,
 }
 
-impl Player {
+impl MixedPlayer {
     pub fn try_clone(&self) -> Result<Self, Box<dyn Error>> {
         match self {
-            Player::AI(ai) => Ok(Player::AI(ai.try_clone()?)),
-            Player::Human => Ok(Player::Human),
+            MixedPlayer::AI(ai) => Ok(MixedPlayer::AI(ai.try_clone()?)),
+            MixedPlayer::Human => Ok(MixedPlayer::Human),
         }
     }
 }
@@ -225,7 +225,7 @@ pub struct Game {
     pub id: usize,
     pub pos: Pos,
     pub history: Vec<(Pos, Option<Vec2>)>,
-    pub players: [Player; 2],
+    pub players: [MixedPlayer; 2],
     pub winner: Option<Tile>,
 }
 
@@ -234,7 +234,7 @@ impl Game {
         format!("#{:_>3}>", self.id)
     }
 
-    pub fn prev_player(&self) -> Option<&Player> {
+    pub fn prev_player(&self) -> Option<&MixedPlayer> {
         if self.pos.next_player == Tile::Empty {
             None
         } else {
@@ -242,7 +242,7 @@ impl Game {
         }
     }
 
-    pub fn prev_player_mut(&mut self) -> Option<&mut Player> {
+    pub fn prev_player_mut(&mut self) -> Option<&mut MixedPlayer> {
         if self.pos.next_player == Tile::Empty {
             None
         } else {
@@ -250,7 +250,7 @@ impl Game {
         }
     }
 
-    pub fn next_player(&self) -> Option<&Player> {
+    pub fn next_player(&self) -> Option<&MixedPlayer> {
         if self.is_game_over() {
             None
         } else {
@@ -258,7 +258,7 @@ impl Game {
         }
     }
 
-    pub fn next_player_mut(&mut self) -> Option<&mut Player> {
+    pub fn next_player_mut(&mut self) -> Option<&mut MixedPlayer> {
         if self.is_game_over() {
             None
         } else {
@@ -293,13 +293,13 @@ impl Game {
         let pos = self.pos;
 
         match self.next_player_mut() {
-            Some(Player::AI(ai)) => {
+            Some(MixedPlayer::AI(ai)) => {
                 ai.run(pos).unwrap_or_else(|err| {
                     eprintln!("Error encountered while trying to run AI: {err}");
                     process::exit(4);
                 });
             }
-            Some(Player::Human) => {}
+            Some(MixedPlayer::Human) => {}
             None => {
                 self.winner = Some(self.pos.winner());
                 console.info(&format!(
@@ -311,11 +311,11 @@ impl Game {
         }
     }
 
-    pub fn new(id: usize, players: [Player; 2]) -> Self {
+    pub fn new(id: usize, players: [MixedPlayer; 2]) -> Self {
         Self::from_pos(id, players, Pos::new())
     }
 
-    pub fn from_pos(id: usize, players: [Player; 2], pos: Pos) -> Self {
+    pub fn from_pos(id: usize, players: [MixedPlayer; 2], pos: Pos) -> Self {
         Self {
             id,
             pos,
@@ -328,7 +328,7 @@ impl Game {
     pub fn print_input_for_debug(&mut self, console: &Console) {
         let pos = self.pos;
 
-        let Some(Player::AI(ai)) = self.next_player_mut() else {
+        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
             panic!("print_input_for_debug was not called with an ai as next player");
         };
 
@@ -340,7 +340,7 @@ impl Game {
     }
 
     pub fn update(&mut self, console: &Console) {
-        let Some(Player::AI(ai)) = self.next_player_mut() else {
+        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
             return;
         };
 
@@ -407,7 +407,7 @@ impl Game {
     }
 
     pub fn undo(&mut self, console: &Console) {
-        if let Some(Player::AI(ai)) = self.next_player_mut() {
+        if let Some(MixedPlayer::AI(ai)) = self.next_player_mut() {
             if let Some(run_handle) = &mut ai.ai_run_handle {
                 run_handle.kill().unwrap_or_default();
             }
@@ -421,7 +421,7 @@ impl Game {
 
             self.pos = self.history.last().expect("history empty").0;
 
-            if let Some(Player::Human) = self.next_player() {
+            if let Some(MixedPlayer::Human) = self.next_player() {
                 break;
             }
         }
@@ -433,11 +433,11 @@ impl Game {
         self.winner.is_some()
     }
 
-    pub fn winner_player(&self) -> Option<&Player> {
+    pub fn winner_player(&self) -> Option<&MixedPlayer> {
         Some(&self.players[self.winner? as usize])
     }
 
-    pub fn winner_player_mut(&mut self) -> Option<&mut Player> {
+    pub fn winner_player_mut(&mut self) -> Option<&mut MixedPlayer> {
         Some(&mut self.players[self.winner? as usize])
     }
 
