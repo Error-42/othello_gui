@@ -2,6 +2,7 @@ use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
 use rand::seq::IteratorRandom;
+#[rustfmt::skip]
 use std::{
     collections::HashMap,
     env,

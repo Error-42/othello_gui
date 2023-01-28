@@ -1,8 +1,5 @@
 use skillratings::{elo::*, Outcomes};
-use std::{
-    collections::HashMap,
-    hash::Hash,
-};
+use std::{collections::HashMap, hash::Hash};
 
 // The whole implementation is generally ugly and inefficient.
 // However, it works and was easy to implement.
