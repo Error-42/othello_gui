@@ -15,137 +15,7 @@ fn main() {
     nannou::app(model).event(event).update(update).run();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Mode {
-    Visual,
-    Compare,
-    Tournament,
-}
-
-#[derive(Debug)]
-struct Model {
-    window_id: window::Id,
-    games: Vec<Game>,
-    showed_game_idx: usize,
-    mode: Mode,
-    first_unstarted: usize,
-    max_concurrency: usize,
-    console: Console,
-}
-
-impl Model {
-    fn get_rects(window: &Window) -> [[Rect; 8]; 8] {
-        const SIZE_MULTIPLIER: (f32, f32) = (0.95, 0.95);
-
-        let scale = f32::min(
-            window.inner_size_points().0 / SIZE_MULTIPLIER.0,
-            window.inner_size_points().1 / SIZE_MULTIPLIER.1,
-        );
-
-        let size = (scale * SIZE_MULTIPLIER.0, scale * SIZE_MULTIPLIER.1);
-
-        let used = Rect::from_w_h(size.0, size.1);
-
-        let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
-
-        #[allow(clippy::needless_range_loop)]
-        for x in 0..8 {
-            for y in 0..8 {
-                rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
-                    .bottom_left_of(used)
-                    .shift_x(size.0 / 8.0 * x as f32)
-                    .shift_y(size.1 / 8.0 * y as f32);
-            }
-        }
-
-        rects
-    }
-
-    fn showed_game(&self) -> &Game {
-        &self.games[self.showed_game_idx]
-    }
-
-    #[allow(unused)]
-    fn showed_game_mut(&mut self) -> &mut Game {
-        &mut self.games[self.showed_game_idx]
-    }
-}
-
-struct StartData {
-    games: Vec<Game>,
-    mode: Mode,
-    max_concurrency: usize,
-}
-
-fn print_help(program_name: &str) {
-    print_version_info();
-
-    println!("COMMAND LINE ARGUMENTS:");
-    println!();
-    println!("{program_name} <mode> <mode arguments>");
-    println!();
-
-    // type annotation provided for rust-analyzer
-    let detailed: &str = textwrap_macros::dedent!(
-        r#"
-        MODES:
-
-        [h]elp: Print this.
-
-        [ver]sion: Print version info.
-
-        [v]isual <player 1> <player 2>: Play a game between two players.
-
-        [c]ompare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: Play some games to compare the strength of two ais. Each opening is played twice, once as white and once as black for each ai.
-        <depth>: Games are started from a position after <depth> plies. If depth >= 1, the first move is always d3.
-        <game amount>: all | <pairs of games>
-        - all: Play all possible openings defined by <depth>.
-        - <pairs of games>: If depth = 0, play <pairs of games> * 2 games, otherwise randomly choose <pairs of games> openings from all possible openings defined by <depth>.
-        
-        [t]ournament <ai list> <max time> <max concurrency>: Every AI plays every other AI twice once as white and once as black. At the end a score table and estimated élő is displayed. (If élő scores cannot be calculated properly, incorrect values are displayed.)
-        <ai list>: path of file containing list of ai paths.
-
-        COMMON MODE ARGUMENTS:
-
-        <player>: human | <ai>
-        <ai>: <path> <max time>
-        <max time>: integer, in milliseconds.
-        <max concurrency>: Maximum number of games that can be played at once.
-
-        OPTIONS:
-
-        --[l]evel: [i]nfo | [w]arn | [n]ecessary
-        ~ info: output everything, default.
-        ~ warn: only output AI errors, crashes and necessary.
-        ~ necessary: only output progress and end results.
-
-        VISUAL PLAY:
-
-        left click: place disk.
-        z: undo.
-    "#
-    );
-
-    let terminal_width = crossterm::terminal::size().map(|size| size.0).unwrap_or(80);
-    let wrap_options = textwrap::Options::new(terminal_width as usize).subsequent_indent("    ");
-
-    // I couldn't get it to work without a collect() in the middle
-    let detailed = detailed
-        .lines()
-        .flat_map(|ln| textwrap::wrap(ln, wrap_options.clone()))
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_owned();
-
-    println!("{detailed}");
-    println!();
-}
-
-fn print_version_info() {
-    println!("Othello GUI v{VERSION} by Error-42");
-    println!();
-}
+// INITALIZATION
 
 fn model(app: &App) -> Model {
     let window_id = app
@@ -232,9 +102,74 @@ fn model(app: &App) -> Model {
     }
 }
 
-enum GameAmountMode {
-    All,
-    Some(usize),
+fn print_help(program_name: &str) {
+    print_version_info();
+
+    println!("COMMAND LINE ARGUMENTS:");
+    println!();
+    println!("{program_name} <mode> <mode arguments>");
+    println!();
+
+    // type annotation provided for rust-analyzer
+    let detailed: &str = textwrap_macros::dedent!(
+        r#"
+        MODES:
+
+        [h]elp: Print this.
+
+        [ver]sion: Print version info.
+
+        [v]isual <player 1> <player 2>: Play a game between two players.
+
+        [c]ompare <depth> <game amount> <max concurrency> <ai 1> <ai 2>: Play some games to compare the strength of two ais. Each opening is played twice, once as white and once as black for each ai.
+        <depth>: Games are started from a position after <depth> plies. If depth >= 1, the first move is always d3.
+        <game amount>: all | <pairs of games>
+        - all: Play all possible openings defined by <depth>.
+        - <pairs of games>: If depth = 0, play <pairs of games> * 2 games, otherwise randomly choose <pairs of games> openings from all possible openings defined by <depth>.
+        
+        [t]ournament <ai list> <max time> <max concurrency>: Every AI plays every other AI twice once as white and once as black. At the end a score table and estimated élő is displayed. (If élő scores cannot be calculated properly, incorrect values are displayed.)
+        <ai list>: path of file containing list of ai paths.
+
+        COMMON MODE ARGUMENTS:
+
+        <player>: human | <ai>
+        <ai>: <path> <max time>
+        <max time>: integer, in milliseconds.
+        <max concurrency>: Maximum number of games that can be played at once.
+
+        OPTIONS:
+
+        --[l]evel: [i]nfo | [w]arn | [n]ecessary
+        ~ info: output everything, default.
+        ~ warn: only output AI errors, crashes and necessary.
+        ~ necessary: only output progress and end results.
+
+        VISUAL PLAY:
+
+        left click: place disk.
+        z: undo.
+    "#
+    );
+
+    let terminal_width = crossterm::terminal::size().map(|size| size.0).unwrap_or(80);
+    let wrap_options = textwrap::Options::new(terminal_width as usize).subsequent_indent("    ");
+
+    // I couldn't get it to work without a collect() in the middle
+    let detailed = detailed
+        .lines()
+        .flat_map(|ln| textwrap::wrap(ln, wrap_options.clone()))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_owned();
+
+    println!("{detailed}");
+    println!();
+}
+
+fn print_version_info() {
+    println!("Othello GUI v{VERSION} by Error-42");
+    println!();
 }
 
 fn handle_compare_mode(arg_iter: &mut Iter<String>) -> StartData {
@@ -389,6 +324,73 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> StartData {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Mode {
+    Visual,
+    Compare,
+    Tournament,
+}
+
+#[derive(Debug)]
+struct Model {
+    window_id: window::Id,
+    games: Vec<Game>,
+    showed_game_idx: usize,
+    mode: Mode,
+    first_unstarted: usize,
+    max_concurrency: usize,
+    console: Console,
+}
+
+impl Model {
+    fn get_rects(window: &Window) -> [[Rect; 8]; 8] {
+        const SIZE_MULTIPLIER: (f32, f32) = (0.95, 0.95);
+
+        let scale = f32::min(
+            window.inner_size_points().0 / SIZE_MULTIPLIER.0,
+            window.inner_size_points().1 / SIZE_MULTIPLIER.1,
+        );
+
+        let size = (scale * SIZE_MULTIPLIER.0, scale * SIZE_MULTIPLIER.1);
+
+        let used = Rect::from_w_h(size.0, size.1);
+
+        let mut rects = [[Rect::from_w_h(0.0, 0.0); 8]; 8];
+
+        #[allow(clippy::needless_range_loop)]
+        for x in 0..8 {
+            for y in 0..8 {
+                rects[x][7 - y] = Rect::from_wh(used.wh() / 8.0)
+                    .bottom_left_of(used)
+                    .shift_x(size.0 / 8.0 * x as f32)
+                    .shift_y(size.1 / 8.0 * y as f32);
+            }
+        }
+
+        rects
+    }
+
+    fn showed_game(&self) -> &Game {
+        &self.games[self.showed_game_idx]
+    }
+
+    #[allow(unused)]
+    fn showed_game_mut(&mut self) -> &mut Game {
+        &mut self.games[self.showed_game_idx]
+    }
+}
+
+struct StartData {
+    games: Vec<Game>,
+    mode: Mode,
+    max_concurrency: usize,
+}
+
+enum GameAmountMode {
+    All,
+    Some(usize),
+}
+
 fn read_ai_player(arg_iter: &mut Iter<String>) -> Player {
     let player = read_player(arg_iter);
 
@@ -457,6 +459,8 @@ fn read_string(arg_iter: &mut Iter<String>, what: &str) -> String {
         })
         .clone()
 }
+
+// UPDATE
 
 fn event(app: &App, model: &mut Model, event: Event) {
     let Event::WindowEvent { id: _, simple: Some(event) } = event else {
@@ -632,18 +636,7 @@ fn finish_tournament(model: &mut Model) -> ! {
     process::exit(0);
 }
 
-// reimplementation required, so it is a constant function
-const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
-    Rgba8 {
-        color: Rgb8 {
-            red,
-            green,
-            blue,
-            standard: std::marker::PhantomData,
-        },
-        alpha,
-    }
-}
+// VIEW
 
 const BACKGROUND_COLOR: Rgba8 = rgba8(30, 90, 60, 255);
 const CHANGE_HIGHLIGHT_COLOR: Rgba8 = rgba8(91, 203, 215, 255);
@@ -705,5 +698,18 @@ fn draw_tile(x: usize, y: usize, game: &Game, rects: &[[Rect; 8]; 8], draw: &Dra
                 Tile::O => LIGHT_COLOR,
                 _ => panic!("Invalid tile while drawing"),
             });
+    }
+}
+
+// reimplementation required, so it is a constant function
+const fn rgba8(red: u8, green: u8, blue: u8, alpha: u8) -> Rgba8 {
+    Rgba8 {
+        color: Rgb8 {
+            red,
+            green,
+            blue,
+            standard: std::marker::PhantomData,
+        },
+        alpha,
     }
 }
