@@ -1,4 +1,4 @@
-use ambassador::{delegatable_trait, Delegate};
+use ambassador::Delegate;
 use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
@@ -21,11 +21,6 @@ fn main() {
 }
 
 // DATA
-
-#[delegatable_trait]
-pub trait Showable {
-    fn showed_game(&self) -> &Game;
-}
 
 #[derive(Debug)]
 struct Model {
@@ -71,19 +66,19 @@ enum Mode {
 
 #[derive(Debug)]
 struct Visual {
-    game: Game,
+    game: Game<MixedPlayer>,
     console: Console,
 }
 
 impl Showable for Visual {
-    fn showed_game(&self) ->  &Game {
-        &self.game
+    fn display_pos(&self) -> DisplayPos {
+        self.game.display_pos()
     }
 }
 
 #[derive(Debug)]
 struct AIArena {
-    games: Vec<Game>,
+    games: Vec<Game<AI>>,
     showed_game_idx: usize,
     first_unstarted: usize,
     max_concurrency: usize,
@@ -92,8 +87,8 @@ struct AIArena {
 }
 
 impl Showable for AIArena {
-    fn showed_game(&self) ->  &Game {
-        &self.games[self.showed_game_idx]
+    fn display_pos(&self) ->  DisplayPos {
+        self.games[self.showed_game_idx].display_pos()
     }
 }
 
@@ -136,11 +131,14 @@ fn model(app: &App) -> Model {
             process::exit(0);
         }
         "v" | "visual" => {
-            let game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
+            let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
+            let console = Console::new(Level::Necessary);
+            
+            game.initialize(&console);
 
             Mode::Visual(Visual {
                 game,
-                console: Console::new(Level::Info),
+                console,
             })
         }
         "c" | "compare" => handle_compare_mode(&mut arg_iter),
@@ -390,8 +388,8 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
 
     for (i, path_1) in ai_paths.iter().enumerate() {
         for path_2 in &ai_paths[i + 1..] {
-            let player_1 = MixedPlayer::AI(AI::new(path_1.clone(), time_limit));
-            let player_2 = MixedPlayer::AI(AI::new(path_2.clone(), time_limit));
+            let player_1 = AI::new(path_1.clone(), time_limit);
+            let player_2 = AI::new(path_2.clone(), time_limit);
 
             games.push(Game::new(
                 id,
@@ -422,15 +420,15 @@ enum GameAmountMode {
     Some(usize),
 }
 
-fn read_ai_player(arg_iter: &mut Iter<String>) -> MixedPlayer {
+fn read_ai_player(arg_iter: &mut Iter<String>) -> AI {
     let player = read_player(arg_iter);
 
-    if let MixedPlayer::Human = player {
+    if let MixedPlayer::AI(ai) = player {
+        ai
+    } else {
         eprintln!("Human player is not accepted");
         process::exit(9);
     }
-
-    player
 }
 
 fn read_player(arg_iter: &mut Iter<String>) -> MixedPlayer {
@@ -510,7 +508,23 @@ fn handle_undo(model: &mut Model) {
         return;
     };
 
-    visual.game.undo(&visual.console);
+    if let MixedPlayer::AI(_) = visual.game.players[0] {
+        if let MixedPlayer::AI(_) = visual.game.players[1] {
+            return;
+        }
+    }
+
+    visual.game.manual_interrupt(&visual.console);
+    
+    while visual.game.history.len() >= 2 {
+        visual.game.manual_undo(&visual.console);
+
+        if let Some(MixedPlayer::Human) = visual.game.next_player() {
+            break;
+        }
+    }
+
+    visual.game.initialize_next_player(&visual.console);
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
@@ -544,7 +558,7 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 fn update(_app: &App, model: &mut Model, _update: Update) {
     match &mut model.mode {
         Mode::AIArena(arena) => update_ai_arena(arena),
-        _ => {}
+        Mode::Visual(visual) => update_visual(visual),
     }
 }
 
@@ -589,6 +603,10 @@ fn update_ai_arena(arena: &mut AIArena) {
     }
 }
 
+fn update_visual(visual: &mut Visual) {
+    visual.game.update(&visual.console)
+}
+
 fn finish_compare(arena: &mut AIArena) -> ! {
     arena.console.unpin();
 
@@ -621,11 +639,7 @@ fn finish_tournament(arena: &mut AIArena) -> ! {
         for (i, tile) in Tile::opponent_iter().enumerate() {
             let score = game.score_for(tile);
 
-            let MixedPlayer::AI(ai) = &game.players[i] else {
-                panic!("tournament shouldn't contain human players");
-            };
-
-            *scores.entry(ai.path.clone()).or_insert(0.0) += score;
+            *scores.entry(game.players[i].path.clone()).or_insert(0.0) += score;
         }
     }
 
@@ -638,9 +652,6 @@ fn finish_tournament(arena: &mut AIArena) -> ! {
                     .players
                     .iter()
                     .map(|player| {
-                        let MixedPlayer::AI(player) = player else {
-                            panic!("tournament shouldn't contain human players");
-                        };
                         player.path.clone()
                     })
                     .collect::<Vec<PathBuf>>()
@@ -685,7 +696,7 @@ const TILE_STROKE_WEIGHT: f32 = 5.0;
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let window = app.window(model.window_id).expect("Error finding window.");
-    let game = model.mode.showed_game();
+    let display_pos = model.mode.display_pos();
 
     let draw = app.draw();
     draw.background().color(BACKGROUND_COLOR);
@@ -694,7 +705,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     for x in 0..8 {
         for y in 0..8 {
-            draw_tile(x, y, game, &rects, &draw);
+            draw_tile(x, y, &display_pos, &rects, &draw);
         }
     }
 
@@ -703,14 +714,12 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 }
 
-fn draw_tile(x: usize, y: usize, game: &Game, rects: &[[Rect; 8]; 8], draw: &Draw) {
+fn draw_tile(x: usize, y: usize, display_pos: &DisplayPos, rects: &[[Rect; 8]; 8], draw: &Draw) {
     let vec2 = othello_gui::Vec2::new(x as isize, y as isize);
 
-    let fill_color = if Some(vec2) == game.history.last().expect("history empty").1 {
+    let fill_color = if Some(vec2) == display_pos.last_move {
         MOVE_HIGHLIGHT_COLOR
-    } else if game.history.len() >= 2
-        && game.pos.board.get(vec2) != game.history[game.history.len() - 2].0.board.get(vec2)
-    {
+    } else if display_pos.cur.board.get(vec2) != display_pos.last.board.get(vec2) {
         CHANGE_HIGHLIGHT_COLOR
     } else {
         TRANSPARENT
@@ -724,12 +733,12 @@ fn draw_tile(x: usize, y: usize, game: &Game, rects: &[[Rect; 8]; 8], draw: &Dra
         .stroke(TILE_STROKE_COLOR)
         .stroke_weight(TILE_STROKE_WEIGHT);
 
-    if game.pos.board.get(vec2) != Tile::Empty {
+    if display_pos.cur.board.get(vec2) != Tile::Empty {
         let circle = rect.pad(TILE_STROKE_WEIGHT);
         draw.ellipse()
             .xy(circle.xy())
             .wh(circle.wh())
-            .color(match game.pos.board.get(vec2) {
+            .color(match display_pos.cur.board.get(vec2) {
                 Tile::X => DARK_COLOR,
                 Tile::O => LIGHT_COLOR,
                 _ => panic!("Invalid tile while drawing"),

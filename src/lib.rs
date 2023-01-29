@@ -1,3 +1,4 @@
+use ambassador::delegatable_trait;
 use console::*;
 use std::{
     collections::HashSet,
@@ -14,6 +15,23 @@ pub use othello_core_lib::*;
 
 pub mod console;
 pub mod elo;
+
+#[delegatable_trait]
+pub trait Player: Sized {
+    // TODO: maybe get rid of `Box<dyn Error>`s?
+
+    fn name(&self) -> String;
+
+    fn init(&mut self, pos: Pos) -> io::Result<()>;
+    fn update(&mut self, pos: Pos) -> io::Result<UpdateResult>;
+    fn interrupt(&mut self) -> io::Result<()>;
+}
+
+pub enum UpdateResult {
+    Ok { mv: Vec2, notes: String }, 
+    Fail { report: String },
+    Wait,
+}
 
 #[derive(Debug)]
 pub struct AI {
@@ -79,6 +97,85 @@ impl AI {
             }),
             Some(_) => Err("Unable to clone ran AI".into()),
         }
+    }
+
+    fn debug_info(&self, pos: Pos) -> String {
+        format!(
+            "For '{}' the input was\n{}",
+            self.path.to_string_lossy(),
+            self.input(pos),
+        )
+    }
+}
+
+impl Player for AI {
+    fn name(&self) -> String {
+        self.path.to_string_lossy().to_string()
+    }
+
+    fn init(&mut self, pos: Pos) -> io::Result<()> {
+        self.run(pos)
+    }
+
+    fn update(&mut self, pos: Pos) -> io::Result<UpdateResult> {
+        let res = self
+            .ai_run_handle
+            .as_mut()
+            .expect("Expected an AI run handle for next player")
+            .check();
+
+        Ok(match res {
+            AIRunResult::Running => UpdateResult::Wait,
+            AIRunResult::InvalidOuput(err) => {
+                UpdateResult::Fail {
+                    report: format!(
+                        "Error reading AI move: {}\n{}",
+                        err,
+                        self.debug_info(pos),
+                    ) 
+                }
+            }
+            AIRunResult::RuntimeError { status, stderr } => {
+                UpdateResult::Fail {
+                    report: format!(
+                        "AI program exit code was non-zero: {}\nstderr:\n{}\n{}",
+                        status,
+                        stderr,
+                        self.debug_info(pos),
+                    ) 
+                }
+            }
+            AIRunResult::TimeOut => {
+                UpdateResult::Fail {
+                    report: format!(
+                        "AI  program exceeded time limit\n{}",
+                        self.debug_info(pos),
+                    ) 
+                }
+            }
+            AIRunResult::Success(mv, notes) => {
+                self.ai_run_handle = None;
+
+                if pos.is_valid_move(mv) {
+                    UpdateResult::Ok {
+                        mv,
+                        notes: notes.unwrap_or_else(|| "no notes provided".to_owned()),
+                    }
+                } else {
+                    UpdateResult::Fail {
+                        report: format!(
+                            "Invalid move played by AI: {}\n{}",
+                            mv,
+                            self.debug_info(pos),
+                        ) 
+                    }
+                }
+            }
+        })
+    }
+
+    fn interrupt(&mut self) -> io::Result<()> {
+        self.ai_run_handle.as_mut().unwrap().kill()
     }
 }
 
@@ -220,21 +317,51 @@ impl MixedPlayer {
     }
 }
 
+impl Player for MixedPlayer {
+    fn name(&self) -> String {
+        match self {
+            MixedPlayer::AI(ai) => ai.name(),
+            MixedPlayer::Human => "human".to_owned(),
+        }
+    }
+
+    fn init(&mut self,pos:Pos) -> io::Result<()>  {
+        match self {
+            MixedPlayer::AI(ai) => ai.init(pos),
+            MixedPlayer::Human => Ok(()),
+        }
+    }
+
+    fn update(&mut self,pos:Pos) -> io::Result<UpdateResult>  {
+        match self {
+            MixedPlayer::AI(ai) => ai.update(pos),
+            MixedPlayer::Human =>  Ok(UpdateResult::Wait),
+        }
+    }
+
+    fn interrupt(&mut self) -> io::Result<()>  {
+        match self {
+            MixedPlayer::AI(ai) => ai.interrupt(),
+            MixedPlayer::Human => Ok(()),
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct Game {
+pub struct Game<P: Player> {
     pub id: usize,
     pub pos: Pos,
     pub history: Vec<(Pos, Option<Vec2>)>,
-    pub players: [MixedPlayer; 2],
+    pub players: [P; 2],
     pub winner: Option<Tile>,
 }
 
-impl Game {
+impl<P: Player> Game<P> {
     fn formatted_id(&self) -> String {
         format!("#{:_>3}>", self.id)
     }
 
-    pub fn prev_player(&self) -> Option<&MixedPlayer> {
+    pub fn prev_player(&self) -> Option<&P> {
         if self.pos.next_player == Tile::Empty {
             None
         } else {
@@ -242,7 +369,7 @@ impl Game {
         }
     }
 
-    pub fn prev_player_mut(&mut self) -> Option<&mut MixedPlayer> {
+    pub fn prev_player_mut(&mut self) -> Option<&mut P> {
         if self.pos.next_player == Tile::Empty {
             None
         } else {
@@ -250,7 +377,7 @@ impl Game {
         }
     }
 
-    pub fn next_player(&self) -> Option<&MixedPlayer> {
+    pub fn next_player(&self) -> Option<&P> {
         if self.is_game_over() {
             None
         } else {
@@ -258,7 +385,7 @@ impl Game {
         }
     }
 
-    pub fn next_player_mut(&mut self) -> Option<&mut MixedPlayer> {
+    pub fn next_player_mut(&mut self) -> Option<&mut P> {
         if self.is_game_over() {
             None
         } else {
@@ -293,13 +420,12 @@ impl Game {
         let pos = self.pos;
 
         match self.next_player_mut() {
-            Some(MixedPlayer::AI(ai)) => {
-                ai.run(pos).unwrap_or_else(|err| {
-                    eprintln!("Error encountered while trying to run AI: {err}");
-                    process::exit(4);
+            Some(player) => {
+                player.init(pos).unwrap_or_else(|err| {
+                    eprintln!("{err}");
+                    process::exit(1);
                 });
             }
-            Some(MixedPlayer::Human) => {}
             None => {
                 self.winner = Some(self.pos.winner());
                 console.info(&format!(
@@ -311,11 +437,11 @@ impl Game {
         }
     }
 
-    pub fn new(id: usize, players: [MixedPlayer; 2]) -> Self {
+    pub fn new(id: usize, players: [P; 2]) -> Self {
         Self::from_pos(id, players, Pos::new())
     }
 
-    pub fn from_pos(id: usize, players: [MixedPlayer; 2], pos: Pos) -> Self {
+    pub fn from_pos(id: usize, players: [P; 2], pos: Pos) -> Self {
         Self {
             id,
             pos,
@@ -325,6 +451,7 @@ impl Game {
         }
     }
 
+    /*
     pub fn print_input_for_debug(&mut self, console: &Console) {
         let pos = self.pos;
 
@@ -338,75 +465,94 @@ impl Game {
         ));
         console.warn(&ai.input(pos));
     }
+    */
 
     pub fn update(&mut self, console: &Console) {
-        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
+        let pos = self.pos;
+
+        let Some(player) = self.next_player_mut() else {
             return;
         };
 
-        let res = ai
-            .ai_run_handle
-            .as_mut()
-            .expect("Expected an AI run handle for next player")
-            .check();
+        let result = player.update(pos).unwrap_or_else(|err| {
+            println!("{err}");
+            process::exit(1);
+        });
 
-        match res {
-            AIRunResult::Running => {}
-            AIRunResult::InvalidOuput(err) => {
+        match result {
+            UpdateResult::Ok { mv, notes } => {
+                self.play(mv, &notes, console);
+                self.initialize_next_player(console);
+            },
+            UpdateResult::Fail{ report } => {
                 console.warn(&format!(
-                    "{} Error reading AI {} move: {}",
+                    "{} Player {} Error:\n{}",
                     self.formatted_id(),
                     self.pos.next_player,
-                    err
+                    report
                 ));
-                self.print_input_for_debug(console);
                 self.winner = Some(self.pos.next_player.opponent());
-            }
-            AIRunResult::RuntimeError { status, stderr } => {
+            },
+            UpdateResult::Wait => {},
+        }
+
+        /*
+        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
+            return;
+        };
+        */
+    }
+
+    // TODO: documentation instead of using the type system isn't great,
+    // but I have no better idea for now.
+
+    /// `manual_interrupt` and `manual_undo` should be used iff the number of
+    /// undos isn't known in advance. `manual_interrupt` must be called before
+    /// and `manual_undo` calls and `initialize_next_player` must be called
+    /// after them. 
+    pub fn manual_interrupt(&mut self, console: &Console) {
+        if let Some(player) = self.next_player_mut() {
+            player.interrupt().unwrap_or_else(|err| {
                 console.warn(&format!(
-                    "{} AI {} program exit code was non-zero: {}",
+                    "{} {}",
                     self.formatted_id(),
-                    self.pos.next_player,
-                    status.code().unwrap(),
-                ));
-                console.warn("stderr of AI program:");
-                console.warn(&stderr);
-                self.print_input_for_debug(console);
-                self.winner = Some(self.pos.next_player.opponent());
-            }
-            AIRunResult::TimeOut => {
-                console.warn(&format!(
-                    "{} AI {} program exceeded time limit",
-                    self.formatted_id(),
-                    self.pos.next_player
-                ));
-                self.print_input_for_debug(console);
-                self.winner = Some(self.pos.next_player.opponent());
-            }
-            AIRunResult::Success(mv, notes) => {
-                ai.ai_run_handle = None;
-                if self.pos.is_valid_move(mv) {
-                    self.play(
-                        mv,
-                        &notes.unwrap_or_else(|| "no notes provided".to_owned()),
-                        console,
-                    );
-                    self.initialize_next_player(console);
-                } else {
-                    console.warn(&format!(
-                        "{} Invalid move played by AI {}: {}",
-                        self.formatted_id(),
-                        self.pos.next_player,
-                        mv.move_string()
-                    ));
-                    self.print_input_for_debug(console);
-                    self.winner = Some(self.pos.next_player.opponent());
-                }
-            }
+                    err,
+                ))
+            });
         }
     }
 
-    pub fn undo(&mut self, console: &Console) {
+    /// `manual_interrupt` and `manual_undo` should be used iff the number of
+    /// undos isn't known in advance. `manual_interrupt` must be called before
+    /// and `manual_undo` calls and `initialize_next_player` must be called
+    /// after them. 
+    pub fn manual_undo(&mut self, console: &Console) {
+        self.winner = None;
+        self.history.pop();
+        console.info(&format!("{} Undid move", self.formatted_id()));
+        self.pos = self.history.last().expect("history empty").0;
+    }
+
+    pub fn undo(&mut self, console: &Console, moves: usize) {
+        if let Some(player) = self.next_player_mut() {
+            player.interrupt().unwrap_or_else(|err| {
+                console.warn(&format!(
+                    "{} {}",
+                    self.formatted_id(),
+                    err,
+                ))
+            });
+        }
+        
+        self.winner = None;
+        for _ in 0..moves {
+            self.history.pop();
+            console.info(&format!("{} Undid move", self.formatted_id()));
+        }
+        self.pos = self.history.last().expect("history empty").0;
+        self.initialize_next_player(console);
+
+        /*
         if let Some(MixedPlayer::AI(ai)) = self.next_player_mut() {
             if let Some(run_handle) = &mut ai.ai_run_handle {
                 run_handle.kill().unwrap_or_default();
@@ -427,17 +573,18 @@ impl Game {
         }
 
         self.initialize_next_player(console);
+        */
     }
 
     pub fn is_game_over(&self) -> bool {
         self.winner.is_some()
     }
 
-    pub fn winner_player(&self) -> Option<&MixedPlayer> {
+    pub fn winner_player(&self) -> Option<&P> {
         Some(&self.players[self.winner? as usize])
     }
 
-    pub fn winner_player_mut(&mut self) -> Option<&mut MixedPlayer> {
+    pub fn winner_player_mut(&mut self) -> Option<&mut P> {
         Some(&mut self.players[self.winner? as usize])
     }
 
@@ -454,6 +601,25 @@ impl Game {
             Relation::Opponent => 0.0,
         }
     }
+
+    pub fn display_pos(&self) -> DisplayPos {
+        DisplayPos {
+            cur: self.pos,
+            last: self.history[(self.history.len() as isize - 2).max(0) as usize].0,
+            last_move: self.history.last().unwrap().1,
+        }
+    }
+}
+
+#[delegatable_trait]
+pub trait Showable {
+    fn display_pos(&self) -> DisplayPos;
+}
+
+pub struct DisplayPos {
+    pub cur: Pos,
+    pub last: Pos,
+    pub last_move: Option<Vec2>,
 }
 
 // https://stackoverflow.com/questions/46766560/how-to-check-if-there-are-duplicates-in-a-slice
