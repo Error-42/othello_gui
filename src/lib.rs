@@ -148,7 +148,7 @@ impl Player for AI {
             AIRunResult::TimeOut => {
                 UpdateResult::Fail {
                     report: format!(
-                        "AI  program exceeded time limit\n{}",
+                        "AI program exceeded time limit\n{}",
                         self.debug_info(pos),
                     ) 
                 }
