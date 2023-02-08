@@ -18,8 +18,6 @@ pub mod elo;
 
 #[delegatable_trait]
 pub trait Player: Sized {
-    // TODO: maybe get rid of `Box<dyn Error>`s?
-
     fn name(&self) -> String;
 
     fn init(&mut self, pos: Pos) -> io::Result<()>;
