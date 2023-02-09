@@ -1,4 +1,3 @@
-use ambassador::Delegate;
 use console::*;
 use nannou::prelude::*;
 use othello_gui::*;
@@ -57,11 +56,19 @@ impl Model {
     }
 }
 
-#[derive(Debug, Delegate)]
-#[delegate(Showable)]
+#[derive(Debug)]
 enum Mode {
-    Visual(Visual),
-    AIArena(AIArena),
+    Visual(Box<Visual>),
+    AIArena(Box<AIArena>),
+}
+
+impl Showable for Mode {
+    fn display_pos(&self) -> DisplayPos {
+        match self {
+            Mode::Visual(v) => v.display_pos(),
+            Mode::AIArena(a) => a.display_pos(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -136,10 +143,10 @@ fn model(app: &App) -> Model {
             
             game.initialize(&console);
 
-            Mode::Visual(Visual {
+            Mode::Visual(Box::new(Visual {
                 game,
                 console,
-            })
+            }))
         }
         "c" | "compare" => handle_compare_mode(&mut arg_iter),
         "t" | "tournament" => handle_tournament_mode(&mut arg_iter),
@@ -320,14 +327,14 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> Mode {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    Mode::AIArena(AIArena {
+    Mode::AIArena(Box::new(AIArena {
         games,
         showed_game_idx: 0,
         first_unstarted: 0,
         max_concurrency,
         console: Console::new(Level::Info),
         submode: Submode::Compare,
-    })
+    }))
 }
 
 fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
@@ -405,14 +412,14 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
         }
     }
 
-    Mode::AIArena(AIArena {
+    Mode::AIArena(Box::new(AIArena {
         games,
         showed_game_idx: 0,
         first_unstarted: 0,
         max_concurrency,
         console: Console::new(Level::Info),
         submode: Submode::Tournament,
-    })
+    }))
 }
 
 enum GameAmountMode {
