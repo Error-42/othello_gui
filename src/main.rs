@@ -370,7 +370,7 @@ enum GameAmountMode {
 }
 
 fn read_level(arg_iter: &mut Iter<String>) -> Level {
-    match read_string(&mut arg_iter, "<level>").to_lowercase().as_str() {
+    match read_string(arg_iter, "<level>").to_lowercase().as_str() {
         "i" | "info" => Level::Info,
         "w" | "warn" | "warning" => Level::Warning,
         "n" | "necessary" => Level::Necessary,
