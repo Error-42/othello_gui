@@ -111,26 +111,16 @@ impl AIArena {
             }
         }
 
-        let elos = elo::from_single_tournament(
-            &self
-                .games
-                .iter()
-                .map(|game| elo::Game {
-                    players: game
-                        .players
-                        .iter()
-                        .map(|player| {
-                            player.path.clone()
-                        })
-                        .collect::<Vec<PathBuf>>()
-                        .try_into()
-                        .unwrap(),
-                    score: game.score_for(Tile::X),
-                })
-                .collect::<Vec<_>>(),
-            50,
-            16.0,
-        );
+        let elo_games: Vec<_> = self
+            .games
+            .iter()
+            .map(|game| elo::Game {
+                players: [game.players[0].path.clone(), game.players[1].path.clone()],
+                score: game.score_for(Tile::X),
+            })
+            .collect();
+
+        let elos = elo::from_single_tournament(&elo_games, 50, 16.0);
 
         let mut scores: Vec<_> = scores.into_iter().collect();
         scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
