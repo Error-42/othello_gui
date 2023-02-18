@@ -30,6 +30,27 @@ impl AIArena {
     }
 
     pub fn update_ai_arena(&mut self) {
+        self.start_new_games();
+
+        if self.games[self.showed_game_idx].is_game_over() {
+            self.showed_game_idx = self.first_unstarted - 1;
+        }
+
+        for game in self.games[..self.first_unstarted].iter_mut() {
+            game.update(&self.console);
+        }
+
+        self.print_finished_games_count();
+
+        if self.games.iter().all(|game| game.is_game_over()) {
+            match self.submode {
+                Submode::Compare => self.finish_compare(),
+                Submode::Tournament => self.finish_tournament(),
+            }
+        }
+    }
+
+    fn start_new_games(&mut self) {
         let ongoing = self.games[..self.first_unstarted]
             .iter()
             .filter(|&game| !game.is_game_over())
@@ -44,15 +65,9 @@ impl AIArena {
             game.initialize(&self.console);
             self.first_unstarted += 1;
         }
+    }
 
-        if self.games[self.showed_game_idx].is_game_over() {
-            self.showed_game_idx = self.first_unstarted - 1;
-        }
-
-        for game in self.games[..self.first_unstarted].iter_mut() {
-            game.update(&self.console);
-        }
-
+    fn print_finished_games_count(&mut self) {
         let finished = self.games[..self.first_unstarted]
             .iter()
             .filter(|&game| game.is_game_over())
@@ -60,13 +75,6 @@ impl AIArena {
 
         self.console
             .pin(format!("Games done: {}/{}", finished, self.games.len()));
-
-        if self.games.iter().all(|game| game.is_game_over()) {
-            match self.submode {
-                Submode::Compare => self.finish_compare(),
-                Submode::Tournament => self.finish_tournament(),
-            }
-        }
     }
 
     fn finish_compare(&mut self) -> ! {
