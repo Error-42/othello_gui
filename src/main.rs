@@ -395,38 +395,35 @@ fn read_ai_player(arg_iter: &mut Iter<String>) -> AI {
 fn read_player(arg_iter: &mut Iter<String>) -> MixedPlayer {
     let player_arg = read_string(arg_iter, "<player>");
 
-    match player_arg.to_lowercase().as_str() {
-        "human" => MixedPlayer::Human,
-        path => {
-            let time_limit_ms = read_int(arg_iter, "<max time>");
+    if "human" == player_arg.to_lowercase() {
+        return MixedPlayer::Human;
+    }
 
-            if time_limit_ms == 0 {
-                eprintln!("<max time> must be positive");
-                process::exit(14);
-            }
+    let time_limit_ms = read_int(arg_iter, "<max time>");
 
-            let time_limit = Duration::from_millis(time_limit_ms);
+    if time_limit_ms == 0 {
+        eprintln!("<max time> must be positive");
+        process::exit(14);
+    }
 
-            // TODO: this is unused
-            let mut base_path = env::current_dir().expect("error getting current path");
-            base_path.push(path);
+    let time_limit = Duration::from_millis(time_limit_ms);
 
-            if !base_path.is_file() {
-                if base_path.exists() {
-                    eprintln!(
-                        "Path '{}' points to something not a file",
-                        base_path.display()
-                    );
-                    process::exit(15);
-                } else {
-                    eprintln!("Path '{}' is not valid", base_path.display());
-                    process::exit(16);
-                }
-            }
+    let base_path: PathBuf = player_arg.into();
 
-            MixedPlayer::AI(AI::new(path.into(), time_limit))
+    if !base_path.is_file() {
+        if base_path.exists() {
+            eprintln!(
+                "Path '{}' points to something not a file",
+                base_path.display()
+            );
+            process::exit(15);
+        } else {
+            eprintln!("Path '{}' is not valid", base_path.display());
+            process::exit(16);
         }
     }
+
+    MixedPlayer::AI(AI::new(base_path, time_limit))
 }
 
 fn read_int<T: FromStr>(arg_iter: &mut Iter<String>, what: &str) -> T {
