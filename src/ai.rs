@@ -1,5 +1,5 @@
-use othello_core_lib::*;
 use crate::game::*;
+use othello_core_lib::*;
 use std::{
     error::Error,
     io::{self, Read, Write},
@@ -101,33 +101,20 @@ impl Player for AI {
 
         Ok(match res {
             AIRunResult::Running => UpdateResult::Wait,
-            AIRunResult::InvalidOuput(err) => {
-                UpdateResult::Fail {
-                    report: format!(
-                        "Error reading AI move: {}\n{}",
-                        err,
-                        self.debug_info(pos),
-                    ) 
-                }
-            }
-            AIRunResult::RuntimeError { status, stderr } => {
-                UpdateResult::Fail {
-                    report: format!(
-                        "AI program exit code was non-zero: {}\nstderr:\n{}\n{}",
-                        status,
-                        stderr,
-                        self.debug_info(pos),
-                    ) 
-                }
-            }
-            AIRunResult::TimeOut => {
-                UpdateResult::Fail {
-                    report: format!(
-                        "AI program exceeded time limit\n{}",
-                        self.debug_info(pos),
-                    ) 
-                }
-            }
+            AIRunResult::InvalidOuput(err) => UpdateResult::Fail {
+                report: format!("Error reading AI move: {}\n{}", err, self.debug_info(pos),),
+            },
+            AIRunResult::RuntimeError { status, stderr } => UpdateResult::Fail {
+                report: format!(
+                    "AI program exit code was non-zero: {}\nstderr:\n{}\n{}",
+                    status,
+                    stderr,
+                    self.debug_info(pos),
+                ),
+            },
+            AIRunResult::TimeOut => UpdateResult::Fail {
+                report: format!("AI program exceeded time limit\n{}", self.debug_info(pos),),
+            },
             AIRunResult::Success(mv, notes) => {
                 self.ai_run_handle = None;
 
@@ -142,7 +129,7 @@ impl Player for AI {
                             "Invalid move played by AI: {}\n{}",
                             mv,
                             self.debug_info(pos),
-                        ) 
+                        ),
                     }
                 }
             }

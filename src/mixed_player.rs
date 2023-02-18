@@ -1,10 +1,6 @@
-use othello_core_lib::*;
 use crate::{ai::*, game::*};
-use std::{
-    error::Error,
-    io,
-};
-
+use othello_core_lib::*;
+use std::{error::Error, io};
 
 #[derive(Debug)]
 pub enum MixedPlayer {
@@ -29,21 +25,21 @@ impl Player for MixedPlayer {
         }
     }
 
-    fn init(&mut self,pos:Pos) -> io::Result<()>  {
+    fn init(&mut self, pos: Pos) -> io::Result<()> {
         match self {
             MixedPlayer::AI(ai) => ai.init(pos),
             MixedPlayer::Human => Ok(()),
         }
     }
 
-    fn update(&mut self,pos:Pos) -> io::Result<UpdateResult>  {
+    fn update(&mut self, pos: Pos) -> io::Result<UpdateResult> {
         match self {
             MixedPlayer::AI(ai) => ai.update(pos),
-            MixedPlayer::Human =>  Ok(UpdateResult::Wait),
+            MixedPlayer::Human => Ok(UpdateResult::Wait),
         }
     }
 
-    fn interrupt(&mut self) -> io::Result<()>  {
+    fn interrupt(&mut self) -> io::Result<()> {
         match self {
             MixedPlayer::AI(ai) => ai.interrupt(),
             MixedPlayer::Human => Ok(()),

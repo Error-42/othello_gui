@@ -1,5 +1,5 @@
-use ambassador::delegatable_trait;
 use crate::console::*;
+use ambassador::delegatable_trait;
 use othello_core_lib::*;
 use std::{io, process};
 
@@ -13,7 +13,7 @@ pub trait Player: Sized {
 }
 
 pub enum UpdateResult {
-    Ok { mv: Vec2, notes: String }, 
+    Ok { mv: Vec2, notes: String },
     Fail { report: String },
     Wait,
 }
@@ -154,8 +154,8 @@ impl<P: Player> Game<P> {
             UpdateResult::Ok { mv, notes } => {
                 self.play(mv, &notes, console);
                 self.initialize_next_player(console);
-            },
-            UpdateResult::Fail{ report } => {
+            }
+            UpdateResult::Fail { report } => {
                 console.warn(&format!(
                     "{} Player {} Error:\n{}",
                     self.formatted_id(),
@@ -163,8 +163,8 @@ impl<P: Player> Game<P> {
                     report
                 ));
                 self.winner = Some(self.pos.next_player.opponent());
-            },
-            UpdateResult::Wait => {},
+            }
+            UpdateResult::Wait => {}
         }
 
         /*
@@ -180,23 +180,19 @@ impl<P: Player> Game<P> {
     /// `manual_interrupt` and `manual_undo` should be used iff the number of
     /// undos isn't known in advance. `manual_interrupt` must be called before
     /// and `manual_undo` calls and `initialize_next_player` must be called
-    /// after them. 
+    /// after them.
     pub fn manual_interrupt(&mut self, console: &Console) {
         if let Some(player) = self.next_player_mut() {
-            player.interrupt().unwrap_or_else(|err| {
-                console.warn(&format!(
-                    "{} {}",
-                    self.formatted_id(),
-                    err,
-                ))
-            });
+            player
+                .interrupt()
+                .unwrap_or_else(|err| console.warn(&format!("{} {}", self.formatted_id(), err,)));
         }
     }
 
     /// `manual_interrupt` and `manual_undo` should be used iff the number of
     /// undos isn't known in advance. `manual_interrupt` must be called before
     /// and `manual_undo` calls and `initialize_next_player` must be called
-    /// after them. 
+    /// after them.
     pub fn manual_undo(&mut self, console: &Console) {
         self.winner = None;
         self.history.pop();
@@ -206,15 +202,11 @@ impl<P: Player> Game<P> {
 
     pub fn undo(&mut self, console: &Console, moves: usize) {
         if let Some(player) = self.next_player_mut() {
-            player.interrupt().unwrap_or_else(|err| {
-                console.warn(&format!(
-                    "{} {}",
-                    self.formatted_id(),
-                    err,
-                ))
-            });
+            player
+                .interrupt()
+                .unwrap_or_else(|err| console.warn(&format!("{} {}", self.formatted_id(), err,)));
         }
-        
+
         self.winner = None;
         for _ in 0..moves {
             self.history.pop();

@@ -105,13 +105,10 @@ fn model(app: &App) -> Model {
         "v" | "visual" => {
             let mut game = Game::new(0, [read_player(&mut arg_iter), read_player(&mut arg_iter)]);
             let console = Console::new(Level::Necessary);
-            
+
             game.initialize(&console);
 
-            Mode::Visual(Box::new(Visual {
-                game,
-                console,
-            }))
+            Mode::Visual(Box::new(Visual { game, console }))
         }
         "c" | "compare" => handle_compare_mode(&mut arg_iter),
         "t" | "tournament" => handle_tournament_mode(&mut arg_iter),
@@ -153,10 +150,7 @@ fn model(app: &App) -> Model {
         Mode::AIArena(arena) => arena.console.level = level,
     }
 
-    Model {
-        window_id,
-        mode,
-    }
+    Model { window_id, mode }
 }
 
 fn print_help(program_name: &str) {
@@ -292,16 +286,12 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> Mode {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    Mode::AIArena(
-        Box::new(
-            AIArena::new(
-                games,
-                max_concurrency,
-                Console::new(Level::Info),
-                Submode::Compare
-            )
-        )
-    )
+    Mode::AIArena(Box::new(AIArena::new(
+        games,
+        max_concurrency,
+        Console::new(Level::Info),
+        Submode::Compare,
+    )))
 }
 
 fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
@@ -379,16 +369,12 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
         }
     }
 
-    Mode::AIArena(
-        Box::new(
-            AIArena::new(
-                games,
-                max_concurrency,
-                Console::new(Level::Info),
-                Submode::Tournament
-            )
-        )
-    )
+    Mode::AIArena(Box::new(AIArena::new(
+        games,
+        max_concurrency,
+        Console::new(Level::Info),
+        Submode::Tournament,
+    )))
 }
 
 enum GameAmountMode {
@@ -575,14 +561,13 @@ fn draw_tile(x: usize, y: usize, display_pos: &DisplayPos, rects: &[[Rect; 8]; 8
 
     if display_pos.cur.board.get(vec2) != Tile::Empty {
         let circle = rect.pad(TILE_STROKE_WEIGHT);
-        draw.ellipse()
-            .xy(circle.xy())
-            .wh(circle.wh())
-            .color(match display_pos.cur.board.get(vec2) {
+        draw.ellipse().xy(circle.xy()).wh(circle.wh()).color(
+            match display_pos.cur.board.get(vec2) {
                 Tile::X => DARK_COLOR,
                 Tile::O => LIGHT_COLOR,
                 _ => panic!("Invalid tile while drawing"),
-            });
+            },
+        );
     }
 }
 

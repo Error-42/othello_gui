@@ -1,16 +1,6 @@
-use crate::{
-    ai::*,
-    console::*,
-    elo,
-    game::*,
-};
+use crate::{ai::*, console::*, elo, game::*};
 use othello_core_lib::*;
-#[rustfmt::skip]
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    process,
-};
+use std::{collections::HashMap, path::PathBuf, process};
 
 #[derive(Debug)]
 pub struct AIArena {
@@ -23,7 +13,12 @@ pub struct AIArena {
 }
 
 impl AIArena {
-    pub fn new(games: Vec<Game<AI>>, max_concurrency: usize, console: Console, submode: Submode) -> Self {
+    pub fn new(
+        games: Vec<Game<AI>>,
+        max_concurrency: usize,
+        console: Console,
+        submode: Submode,
+    ) -> Self {
         AIArena {
             games,
             showed_game_idx: 0,
@@ -40,7 +35,7 @@ impl AIArena {
             .filter(|&game| !game.is_game_over())
             .count();
         let can_start = self.max_concurrency - ongoing;
-    
+
         let model_games_len = self.games.len();
         for game in self.games
             [self.first_unstarted..(self.first_unstarted + can_start).min(model_games_len)]
@@ -49,24 +44,23 @@ impl AIArena {
             game.initialize(&self.console);
             self.first_unstarted += 1;
         }
-    
+
         if self.games[self.showed_game_idx].is_game_over() {
             self.showed_game_idx = self.first_unstarted - 1;
         }
-    
+
         for game in self.games[..self.first_unstarted].iter_mut() {
             game.update(&self.console);
         }
-    
+
         let finished = self.games[..self.first_unstarted]
             .iter()
             .filter(|&game| game.is_game_over())
             .count();
-    
-        self
-            .console
+
+        self.console
             .pin(format!("Games done: {}/{}", finished, self.games.len()));
-    
+
         if self.games.iter().all(|game| game.is_game_over()) {
             match self.submode {
                 Submode::Compare => self.finish_compare(),
@@ -91,8 +85,7 @@ impl AIArena {
             }
         }
 
-        self
-            .console
+        self.console
             .print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
 
         process::exit(0);
@@ -125,8 +118,7 @@ impl AIArena {
         let mut scores: Vec<_> = scores.into_iter().collect();
         scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
 
-        self
-            .console
+        self.console
             .print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
 
         for (path, score) in scores {
@@ -143,7 +135,7 @@ impl AIArena {
 }
 
 impl Showable for AIArena {
-    fn display_pos(&self) ->  DisplayPos {
+    fn display_pos(&self) -> DisplayPos {
         self.games[self.showed_game_idx].display_pos()
     }
 }
@@ -153,4 +145,3 @@ pub enum Submode {
     Compare,
     Tournament,
 }
-

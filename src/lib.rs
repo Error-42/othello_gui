@@ -1,8 +1,5 @@
 pub use othello_core_lib::*;
-use std::{
-    collections::HashSet,
-    hash::Hash,
-};
+use std::{collections::HashSet, hash::Hash};
 
 pub use ai::*;
 pub use arena::*;
