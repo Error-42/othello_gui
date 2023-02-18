@@ -4,7 +4,6 @@ use othello_gui::*;
 use rand::seq::IteratorRandom;
 #[rustfmt::skip]
 use std::{
-    collections::HashMap,
     env,
     path::PathBuf,
     process,
@@ -69,40 +68,6 @@ impl Showable for Mode {
             Mode::AIArena(a) => a.display_pos(),
         }
     }
-}
-
-#[derive(Debug)]
-struct Visual {
-    game: Game<MixedPlayer>,
-    console: Console,
-}
-
-impl Showable for Visual {
-    fn display_pos(&self) -> DisplayPos {
-        self.game.display_pos()
-    }
-}
-
-#[derive(Debug)]
-struct AIArena {
-    games: Vec<Game<AI>>,
-    showed_game_idx: usize,
-    first_unstarted: usize,
-    max_concurrency: usize,
-    console: Console,
-    submode: Submode,
-}
-
-impl Showable for AIArena {
-    fn display_pos(&self) ->  DisplayPos {
-        self.games[self.showed_game_idx].display_pos()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Submode {
-    Compare,
-    Tournament,
 }
 
 // INITALIZATION
@@ -327,14 +292,16 @@ fn handle_compare_mode(arg_iter: &mut Iter<String>) -> Mode {
         games.push(Game::from_pos(i * 2 + 1, players2, start));
     }
 
-    Mode::AIArena(Box::new(AIArena {
-        games,
-        showed_game_idx: 0,
-        first_unstarted: 0,
-        max_concurrency,
-        console: Console::new(Level::Info),
-        submode: Submode::Compare,
-    }))
+    Mode::AIArena(
+        Box::new(
+            AIArena::new(
+                games,
+                max_concurrency,
+                Console::new(Level::Info),
+                Submode::Compare
+            )
+        )
+    )
 }
 
 fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
@@ -412,14 +379,16 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
         }
     }
 
-    Mode::AIArena(Box::new(AIArena {
-        games,
-        showed_game_idx: 0,
-        first_unstarted: 0,
-        max_concurrency,
-        console: Console::new(Level::Info),
-        submode: Submode::Tournament,
-    }))
+    Mode::AIArena(
+        Box::new(
+            AIArena::new(
+                games,
+                max_concurrency,
+                Console::new(Level::Info),
+                Submode::Tournament
+            )
+        )
+    )
 }
 
 enum GameAmountMode {
@@ -511,27 +480,9 @@ fn event(app: &App, model: &mut Model, event: Event) {
 }
 
 fn handle_undo(model: &mut Model) {
-    let Mode::Visual(visual) = &mut model.mode else {
-        return;
+    if let Mode::Visual(visual) = &mut model.mode {
+        visual.undo();
     };
-
-    if let MixedPlayer::AI(_) = visual.game.players[0] {
-        if let MixedPlayer::AI(_) = visual.game.players[1] {
-            return;
-        }
-    }
-
-    visual.game.manual_interrupt(&visual.console);
-    
-    while visual.game.history.len() >= 2 {
-        visual.game.manual_undo(&visual.console);
-
-        if let Some(MixedPlayer::Human) = visual.game.next_player() {
-            break;
-        }
-    }
-
-    visual.game.initialize_next_player(&visual.console);
 }
 
 fn handle_left_mouse_click(app: &App, model: &mut Model) {
@@ -555,139 +506,21 @@ fn handle_left_mouse_click(app: &App, model: &mut Model) {
 
         if visual.game.pos.is_valid_move(coor) {
             visual.game.play(coor, "human", &visual.console);
+            visual.game.initialize_next_player(&visual.console);
         }
         break;
     }
-
-    visual.game.initialize_next_player(&visual.console);
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
     match &mut model.mode {
-        Mode::AIArena(arena) => update_ai_arena(arena),
+        Mode::AIArena(arena) => arena.update_ai_arena(),
         Mode::Visual(visual) => update_visual(visual),
-    }
-}
-
-fn update_ai_arena(arena: &mut AIArena) {
-    let ongoing = arena.games[..arena.first_unstarted]
-        .iter()
-        .filter(|&game| !game.is_game_over())
-        .count();
-    let can_start = arena.max_concurrency - ongoing;
-
-    let model_games_len = arena.games.len();
-    for game in arena.games
-        [arena.first_unstarted..(arena.first_unstarted + can_start).min(model_games_len)]
-        .iter_mut()
-    {
-        game.initialize(&arena.console);
-        arena.first_unstarted += 1;
-    }
-
-    if arena.games[arena.showed_game_idx].is_game_over() {
-        arena.showed_game_idx = arena.first_unstarted - 1;
-    }
-
-    for game in arena.games[..arena.first_unstarted].iter_mut() {
-        game.update(&arena.console);
-    }
-
-    let finished = arena.games[..arena.first_unstarted]
-        .iter()
-        .filter(|&game| game.is_game_over())
-        .count();
-
-    arena
-        .console
-        .pin(format!("Games done: {}/{}", finished, arena.games.len()));
-
-    if arena.games.iter().all(|game| game.is_game_over()) {
-        match arena.submode {
-            Submode::Compare => finish_compare(arena),
-            Submode::Tournament => finish_tournament(arena),
-        }
     }
 }
 
 fn update_visual(visual: &mut Visual) {
     visual.game.update(&visual.console)
-}
-
-fn finish_compare(arena: &mut AIArena) -> ! {
-    arena.console.unpin();
-
-    let mut score1 = 0.0;
-    let mut score2 = 0.0;
-
-    for i in 0..arena.games.len() {
-        if i % 2 == 0 {
-            score1 += arena.games[i].score_for(Tile::X);
-            score2 += arena.games[i].score_for(Tile::O);
-        } else {
-            score1 += arena.games[i].score_for(Tile::O);
-            score2 += arena.games[i].score_for(Tile::X);
-        }
-    }
-
-    arena
-        .console
-        .print(&format!("Score 1: {score1:.1}, score 2: {score2:.1}"));
-
-    process::exit(0);
-}
-
-fn finish_tournament(arena: &mut AIArena) -> ! {
-    arena.console.unpin();
-
-    let mut scores: HashMap<PathBuf, f32> = HashMap::new();
-
-    for game in &arena.games {
-        for (i, tile) in Tile::opponent_iter().enumerate() {
-            let score = game.score_for(tile);
-
-            *scores.entry(game.players[i].path.clone()).or_insert(0.0) += score;
-        }
-    }
-
-    let elos = elo::from_single_tournament(
-        &arena
-            .games
-            .iter()
-            .map(|game| elo::Game {
-                players: game
-                    .players
-                    .iter()
-                    .map(|player| {
-                        player.path.clone()
-                    })
-                    .collect::<Vec<PathBuf>>()
-                    .try_into()
-                    .unwrap(),
-                score: game.score_for(Tile::X),
-            })
-            .collect::<Vec<_>>(),
-        50,
-        16.0,
-    );
-
-    let mut scores: Vec<_> = scores.into_iter().collect();
-    scores.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
-
-    arena
-        .console
-        .print(&format!("{: >4} {: >5} Path", "Elo", "Score"));
-
-    for (path, score) in scores {
-        arena.console.print(&format!(
-            "{: >4.0} {: >5.1} {}",
-            elos[&path],
-            score,
-            path.display()
-        ));
-    }
-
-    process::exit(0);
 }
 
 // VIEW
