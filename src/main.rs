@@ -123,20 +123,7 @@ fn model(app: &App) -> Model {
 
     while let Some(option) = arg_iter.next() {
         match option.to_lowercase().as_str() {
-            "-l" | "--level" => {
-                level = match read_string(&mut arg_iter, "<level>")
-                    .to_lowercase()
-                    .as_str()
-                {
-                    "i" | "info" => Level::Info,
-                    "w" | "warn" | "warning" => Level::Warning,
-                    "n" | "necessary" => Level::Necessary,
-                    other => {
-                        eprintln!("Unknown <level> '{other}'");
-                        process::exit(19);
-                    }
-                }
-            }
+            "-l" | "--level" => level = read_level(&mut arg_iter),
             other => {
                 eprintln!("Unrecognised option '{other}'");
                 print_help(program_name);
@@ -380,6 +367,18 @@ fn handle_tournament_mode(arg_iter: &mut Iter<String>) -> Mode {
 enum GameAmountMode {
     All,
     Some(usize),
+}
+
+fn read_level(arg_iter: &mut Iter<String>) -> Level {
+    match read_string(&mut arg_iter, "<level>").to_lowercase().as_str() {
+        "i" | "info" => Level::Info,
+        "w" | "warn" | "warning" => Level::Warning,
+        "n" | "necessary" => Level::Necessary,
+        other => {
+            eprintln!("Unknown <level> '{other}'");
+            process::exit(19);
+        }
+    }
 }
 
 fn read_ai_player(arg_iter: &mut Iter<String>) -> AI {
