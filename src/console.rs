@@ -28,13 +28,13 @@ impl Console {
                 .queue(cursor::MoveUp(message_line_count as u16))
                 .and_then(|q| q.queue(cursor::MoveToColumn(0)))
                 .and_then(|q| q.queue(terminal::Clear(terminal::ClearType::CurrentLine)))
-                .expect("Error queuing to stdout");
+                .expect("Error writing to stdout");
             print!("{message}");
             stdout()
                 .queue(cursor::MoveDown(message_line_count as u16))
                 .and_then(|q| q.queue(cursor::MoveToColumn(0)))
-                .expect("Error queuing to stdout");
-            stdout().flush().unwrap();
+                .and_then(|q| q.flush())
+                .expect("Error writing to stdout");
         } else {
             println!("{message}");
         }
@@ -66,7 +66,7 @@ impl Console {
         self.clear_pinned();
 
         print!("{pinned}");
-        stdout().flush().unwrap();
+        stdout().flush().expect("Error writing to stdout");
         self.pinned = Some(pinned);
     }
 
