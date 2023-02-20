@@ -121,23 +121,7 @@ impl<P: Player> Game<P> {
             winner: None,
         }
     }
-
-    /*
-    pub fn print_input_for_debug(&mut self, console: &Console) {
-        let pos = self.pos;
-
-        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
-            panic!("print_input_for_debug was not called with an ai as next player");
-        };
-
-        console.warn(&format!(
-            "For '{}' the input was",
-            ai.path.to_string_lossy()
-        ));
-        console.warn(&ai.input(pos));
-    }
-    */
-
+    
     pub fn update(&mut self, console: &Console) {
         let pos = self.pos;
 
@@ -166,12 +150,6 @@ impl<P: Player> Game<P> {
             }
             UpdateResult::Wait => {}
         }
-
-        /*
-        let Some(MixedPlayer::AI(ai)) = self.next_player_mut() else {
-            return;
-        };
-        */
     }
 
     // TODO: documentation instead of using the type system isn't great,
@@ -214,29 +192,6 @@ impl<P: Player> Game<P> {
         }
         self.pos = self.history.last().expect("history empty").0;
         self.initialize_next_player(console);
-
-        /*
-        if let Some(MixedPlayer::AI(ai)) = self.next_player_mut() {
-            if let Some(run_handle) = &mut ai.ai_run_handle {
-                run_handle.kill().unwrap_or_default();
-            }
-        }
-
-        self.winner = None;
-
-        while self.history.len() >= 2 {
-            self.history.pop();
-            console.info(&format!("{} Undid move", self.formatted_id()));
-
-            self.pos = self.history.last().expect("history empty").0;
-
-            if let Some(MixedPlayer::Human) = self.next_player() {
-                break;
-            }
-        }
-
-        self.initialize_next_player(console);
-        */
     }
 
     pub fn is_game_over(&self) -> bool {
