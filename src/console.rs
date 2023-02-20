@@ -26,17 +26,14 @@ impl Console {
             print!("{}{}", "\n".repeat(message_line_count), pinned);
             stdout()
                 .queue(cursor::MoveUp(message_line_count as u16))
-                .unwrap()
-                .queue(cursor::MoveToColumn(0))
-                .unwrap()
-                .queue(terminal::Clear(terminal::ClearType::CurrentLine))
-                .unwrap();
+                .and_then(|q| q.queue(cursor::MoveToColumn(0)))
+                .and_then(|q| q.queue(terminal::Clear(terminal::ClearType::CurrentLine)))
+                .expect("Error queuing to stdout");
             print!("{message}");
             stdout()
                 .queue(cursor::MoveDown(message_line_count as u16))
-                .unwrap()
-                .queue(cursor::MoveToColumn(0))
-                .unwrap();
+                .and_then(|q| q.queue(cursor::MoveToColumn(0)))
+                .expect("Error queuing to stdout");
             stdout().flush().unwrap();
         } else {
             println!("{message}");
@@ -83,9 +80,8 @@ impl Console {
         if self.pinned.is_some() {
             stdout()
                 .execute(terminal::Clear(terminal::ClearType::CurrentLine))
-                .unwrap()
-                .execute(cursor::MoveToColumn(0))
-                .unwrap();
+                .and_then(|q| q.execute(cursor::MoveToColumn(0)))
+                .expect("Error queuing to stdout");
         }
     }
 }
